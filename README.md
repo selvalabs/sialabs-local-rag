@@ -182,3 +182,23 @@ Quick seed command, after starting the backend:
 powershell -ExecutionPolicy Bypass -File .\scripts\seed-demo.ps1
 ~~~
 <!-- DEMO_SECTION_END -->
+
+<!-- OLLAMA_SMOKE_TEST_SECTION_START -->
+## Ollama smoke test
+
+The optional local AI mode can be validated with `docs/OLLAMA_SMOKE_TEST.md`.
+
+It includes:
+
+- checking the local Ollama API;
+- listing installed local models;
+- verifying configured chat and embedding models;
+- optionally running direct chat and embedding smoke requests;
+- switching the app between mock/hash mode and Ollama mode.
+
+Quick check command:
+
+~~~powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\check-ollama.ps1
+~~~
+<!-- OLLAMA_SMOKE_TEST_SECTION_END -->
