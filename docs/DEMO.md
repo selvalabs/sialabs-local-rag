@@ -121,3 +121,13 @@ This demo shows:
 - deterministic CI-friendly providers;
 - optional local model runtime;
 - documentation and GitHub workflow discipline.
+
+<!-- PDF_INGESTION_SECTION_START -->
+## PDF upload demo
+
+The demo can also be tested with a text-based PDF.
+
+Use a PDF that contains selectable text, not a scanned image. Upload it through the file upload card and ask a question about its content.
+
+Current limitation: OCR for scanned PDFs is intentionally out of scope for this MVP.
+<!-- PDF_INGESTION_SECTION_END -->

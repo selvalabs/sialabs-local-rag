@@ -153,16 +153,16 @@ function App() {
         <form className="card stack" onSubmit={handleUploadDocument}>
           <div>
             <p className="eyebrow">Upload UTF-8</p>
-            <h2>Arquivo .txt ou .md</h2>
+            <h2>Arquivo .txt, .md ou .pdf</h2>
           </div>
           <input
             type="file"
-            accept=".txt,.md,.markdown"
+            accept=".txt,.md,.markdown,.pdf"
             onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
           />
           <p className="muted">
-            O MVP aceita texto e Markdown. PDF fica como evolução futura para manter o primeiro PR
-            pequeno e verificável.
+            O MVP aceita TXT, Markdown e PDFs com texto selecionavel. PDFs escaneados/OCR
+            ficam fora do escopo por enquanto.
           </p>
           <button disabled={isLoading || !selectedFile}>Enviar arquivo</button>
         </form>

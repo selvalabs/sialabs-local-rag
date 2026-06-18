@@ -73,3 +73,23 @@ Retorna:
 | 415 | extensão não suportada |
 | 422 | payload inválido ou arquivo não UTF-8 |
 | 503 | Ollama indisponível ou erro de provider |
+
+<!-- PDF_INGESTION_SECTION_START -->
+## PDF ingestion
+
+`POST /api/documents/upload` accepts:
+
+- `.txt`
+- `.md`
+- `.markdown`
+- `.pdf`
+
+For PDFs, the backend extracts selectable text and indexes the extracted content using the existing RAG pipeline.
+
+Limitations:
+
+- scanned PDFs are not OCR-processed;
+- images are not extracted;
+- tables are not reconstructed;
+- password-protected or damaged PDFs return a validation error.
+<!-- PDF_INGESTION_SECTION_END -->

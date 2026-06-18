@@ -202,3 +202,11 @@ Quick check command:
 powershell -ExecutionPolicy Bypass -File .\scripts\check-ollama.ps1
 ~~~
 <!-- OLLAMA_SMOKE_TEST_SECTION_END -->
+
+<!-- PDF_INGESTION_SECTION_START -->
+## PDF ingestion
+
+The upload flow supports `.txt`, `.md`, `.markdown` and text-based `.pdf` files.
+
+PDF support is intentionally limited to extractable text. Scanned PDFs, OCR, image extraction and table reconstruction are out of scope for the current MVP.
+<!-- PDF_INGESTION_SECTION_END -->

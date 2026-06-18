@@ -1,10 +1,14 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Annotated, cast
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 
+from sialabs_local_rag.parsing import (
+    DocumentParsingError,
+    UnsupportedDocumentTypeError,
+    parse_uploaded_document,
+)
 from sialabs_local_rag.providers import ProviderError
 from sialabs_local_rag.schemas import (
     ChatRequest,
@@ -18,7 +22,6 @@ from sialabs_local_rag.service import EmptyDocumentError, RagService
 from sialabs_local_rag.settings import Settings
 from sialabs_local_rag.storage import DuplicateDocumentError, Storage
 
-ALLOWED_UPLOAD_EXTENSIONS = {".txt", ".md", ".markdown"}
 MAX_UPLOAD_BYTES = 1_000_000
 
 api_router = APIRouter()
@@ -102,12 +105,6 @@ async def upload_document(
     title: Annotated[str | None, Form()] = None,
 ) -> DocumentResponse:
     filename = file.filename or "uploaded-document.txt"
-    extension = Path(filename).suffix.lower()
-    if extension not in ALLOWED_UPLOAD_EXTENSIONS:
-        raise HTTPException(
-            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detail="Only .txt, .md and .markdown uploads are supported in this MVP.",
-        )
 
     raw_content = await file.read()
     if len(raw_content) > MAX_UPLOAD_BYTES:
@@ -117,11 +114,16 @@ async def upload_document(
         )
 
     try:
-        content = raw_content.decode("utf-8")
-    except UnicodeDecodeError as exc:
+        content = parse_uploaded_document(filename=filename, raw_content=raw_content)
+    except UnsupportedDocumentTypeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail=str(exc),
+        ) from exc
+    except DocumentParsingError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Uploaded file must be UTF-8 encoded.",
+            detail=str(exc),
         ) from exc
 
     try:
