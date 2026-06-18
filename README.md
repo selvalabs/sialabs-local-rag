@@ -210,3 +210,14 @@ The upload flow supports `.txt`, `.md`, `.markdown` and text-based `.pdf` files.
 
 PDF support is intentionally limited to extractable text. Scanned PDFs, OCR, image extraction and table reconstruction are out of scope for the current MVP.
 <!-- PDF_INGESTION_SECTION_END -->
+
+<!-- REAL_OLLAMA_VALIDATION_SECTION_START -->
+## Real Ollama validation
+
+A real local Ollama validation was completed with:
+
+- chat model: gemma3:4b;
+- embedding model: embeddinggemma.
+
+See docs/REAL_OLLAMA_VALIDATION.md.
+<!-- REAL_OLLAMA_VALIDATION_SECTION_END -->
