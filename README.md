@@ -162,3 +162,23 @@ O corpo da issue está em `issues/001-bootstrap-local-rag-mvp.md` e o corpo suge
 ## Licença
 
 MIT. Ver `LICENSE`.
+
+<!-- DEMO_SECTION_START -->
+## Demo
+
+A reproducible local demo is documented in `docs/DEMO.md`.
+
+It includes:
+
+- sample content in `examples/sialabs-demo-context.md`;
+- a seed script in `scripts/seed-demo.ps1`;
+- suggested demo questions;
+- validation steps;
+- optional Ollama mode.
+
+Quick seed command, after starting the backend:
+
+~~~powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\seed-demo.ps1
+~~~
+<!-- DEMO_SECTION_END -->
