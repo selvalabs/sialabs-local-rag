@@ -1,253 +1,221 @@
 # SIALabs Local RAG
 
-Aplicação **local-first** para consulta de documentos com RAG, IA local via Ollama/Gemma e armazenamento em SQLite.
+Local-first RAG application for private document Q&A with FastAPI, React, SQLite and optional local AI through Ollama/Gemma.
 
-O projeto foi desenhado como peça de portfólio técnico para demonstrar:
+This repository is a technical portfolio project. It demonstrates how to build, validate and document a small but complete AI product using a professional GitHub workflow.
 
-- desenvolvimento full stack com React, TypeScript, Python e FastAPI;
-- construção de APIs REST com validação, testes e documentação;
-- fluxo RAG com ingestão, chunking, embeddings, busca semântica e resposta com fontes;
-- soberania de dados: modo local com SQLite e modelos executados via Ollama;
-- disciplina operacional com issue, branch, Conventional Commits, PR, CI e validação local;
-- comunicação técnica para recrutamento por meio de documentação, arquitetura e evidências.
+## What this project demonstrates
+
+- Full stack development with React, TypeScript, Python and FastAPI.
+- REST API design with typed request/response contracts.
+- Local-first data storage with SQLite.
+- Retrieval-augmented generation with ingestion, chunking, embeddings, retrieval and source-grounded answers.
+- Optional local AI runtime using Ollama, Gemma and EmbeddingGemma.
+- CI-friendly mock/hash providers for deterministic tests.
+- Engineering workflow with issues, branches, Conventional Commits, pull requests, CI and validation evidence.
+
+## Current status
+
+The MVP is implemented and validated.
+
+Validated paths:
+
+| Path | Status |
+| --- | --- |
+| Mock/hash mode for CI and demo | Validated |
+| Text and Markdown ingestion | Validated |
+| Text-based PDF ingestion | Validated |
+| Ollama smoke test | Validated |
+| Gemma 3 local runtime | Validated with `gemma3:4b` |
+| Gemma 4 local runtime | Validated with `gemma4:e2b` |
+| Full local Ollama RAG E2E flow | Validated with `gemma3:4b` + `embeddinggemma` |
+
+This is not presented as a production SaaS. It is a local-first portfolio MVP focused on architecture, reproducibility, privacy and technical evidence.
+
+## Evidence
+
+| Evidence | Document |
+| --- | --- |
+| Recruiter-facing technical evidence | `docs/RECRUITER_EVIDENCE.md` |
+| Architecture | `docs/ARCHITECTURE.md` |
+| API contract | `docs/API.md` |
+| Testing strategy | `docs/TESTING.md` |
+| Security and privacy notes | `docs/SECURITY_PRIVACY.md` |
+| Local AI design | `docs/LOCAL_AI.md` |
+| Reproducible demo flow | `docs/DEMO.md` |
+| Ollama smoke test | `docs/OLLAMA_SMOKE_TEST.md` |
+| Real Ollama validation | `docs/REAL_OLLAMA_VALIDATION.md` |
+| Full Ollama RAG E2E validation | `docs/E2E_OLLAMA_RAG_FLOW.md` |
+| Gemma 4 validation | `docs/GEMMA4_OLLAMA_VALIDATION.md` |
+| Roadmap | `docs/ROADMAP.md` |
+| GitHub workflow | `docs/GITHUB_WORKFLOW.md` |
 
 ## Stack
 
-| Camada | Tecnologia |
+| Layer | Technology |
 | --- | --- |
-| Frontend | React, TypeScript, Vite, CSS responsivo |
+| Frontend | React, TypeScript, Vite, responsive CSS |
 | Backend | FastAPI, Pydantic, SQLite, httpx |
-| IA local | Ollama API, modelo de chat configurável, embeddings configuráveis |
-| Testes | pytest, FastAPI TestClient |
-| Qualidade | Ruff, mypy, TypeScript build |
+| RAG | chunking, embeddings, cosine similarity, source attribution |
+| Local AI | Ollama, Gemma, EmbeddingGemma |
+| Tests | pytest, FastAPI TestClient, TypeScript typecheck |
+| Quality | Ruff, mypy, frontend build |
 | Infra | Docker Compose, GitHub Actions |
 
-## Modos de execução
+## Execution modes
 
-O backend suporta dois modos:
+The backend supports two execution modes.
 
-1. **Modo demo/CI**, sem modelo externo:
-   - `LLM_PROVIDER=mock`
-   - `EMBEDDING_PROVIDER=hash`
-   - útil para testes, CI, entrevistas e validação rápida.
+### 1. Mock/hash mode
 
-2. **Modo local AI**, usando Ollama:
-   - `LLM_PROVIDER=ollama`
-   - `EMBEDDING_PROVIDER=ollama`
-   - `OLLAMA_CHAT_MODEL=gemma4`
-   - `OLLAMA_EMBED_MODEL=embeddinggemma`
+Default mode for CI, quick demos and machines without Ollama:
 
-O modo demo existe para garantir que o projeto seja avaliável mesmo quando o recrutador não tiver GPU, Ollama ou modelos baixados.
+~~~env
+LLM_PROVIDER=mock
+EMBEDDING_PROVIDER=hash
+~~~
 
-## Execução local
+This keeps the project easy to validate without GPU, local models or internet access after dependencies are installed.
 
-### Backend
+### 2. Local AI mode with Ollama
 
-```powershell
+Validated local AI models:
+
+~~~env
+LLM_PROVIDER=ollama
+EMBEDDING_PROVIDER=ollama
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_CHAT_MODEL=gemma4:e2b
+OLLAMA_EMBED_MODEL=embeddinggemma
+~~~
+
+Alternative lightweight validated chat model:
+
+~~~env
+OLLAMA_CHAT_MODEL=gemma3:4b
+~~~
+
+## Quick start without Ollama
+
+Terminal 1 — backend:
+
+~~~powershell
 cd backend
 uv sync --dev
 uv run uvicorn sialabs_local_rag.main:app --reload --host 0.0.0.0 --port 8000
-```
+~~~
 
-### Frontend
+Terminal 2 — frontend:
 
-```powershell
+~~~powershell
 cd frontend
 npm ci
 npm run dev
-```
+~~~
 
-Acesse:
+Open:
 
 - Frontend: `http://localhost:5173`
 - API: `http://localhost:8000`
 - Swagger/OpenAPI: `http://localhost:8000/docs`
 
-## Execução com Ollama
+## Seed demo content
 
-Instale e inicie o Ollama localmente. Depois baixe os modelos desejados:
-
-```powershell
-ollama pull gemma4
-ollama pull embeddinggemma
-```
-
-Copie o arquivo de ambiente:
-
-```powershell
-copy .env.example .env
-```
-
-Ajuste:
-
-```env
-LLM_PROVIDER=ollama
-EMBEDDING_PROVIDER=ollama
-OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_CHAT_MODEL=gemma4
-OLLAMA_EMBED_MODEL=embeddinggemma
-```
-
-Suba backend e frontend normalmente.
-
-## Funcionalidades do MVP
-
-- Criar documento por texto colado.
-- Fazer upload de `.txt`, `.md` ou `.markdown`.
-- Quebrar conteúdo em chunks com overlap.
-- Gerar embeddings por hash local ou Ollama.
-- Persistir documentos e chunks em SQLite.
-- Buscar chunks semanticamente por similaridade de cosseno.
-- Gerar resposta contextualizada com fontes.
-- Listar e remover documentos.
-- Expor healthcheck e configuração pública segura.
-
-## Validação
-
-Backend:
-
-```powershell
-cd backend
-uv run ruff check . --fix
-uv run ruff check .
-uv run pytest
-uv run mypy src
-```
-
-Frontend:
-
-```powershell
-cd frontend
-npm ci
-npm run typecheck
-npm run build
-```
-
-Repositório:
-
-```powershell
-git status --short
-git diff --stat
-```
-
-## Fluxo GitHub sugerido
-
-Esta entrega deve entrar como o primeiro PR do projeto:
-
-- Issue: `feat(app): bootstrap local RAG MVP`
-- Branch: `feat/bootstrap-local-rag`
-- Commit: `feat(app): bootstrap local RAG MVP`
-- PR: `feat(app): bootstrap local RAG MVP`
-
-O corpo da issue está em `issues/001-bootstrap-local-rag-mvp.md` e o corpo sugerido do PR está em `docs/pr/001-bootstrap-local-rag-mvp.md`.
-
-## Documentação principal
-
-- `docs/ARCHITECTURE.md`
-- `docs/API.md`
-- `docs/LOCAL_AI.md`
-- `docs/SECURITY_PRIVACY.md`
-- `docs/TESTING.md`
-- `docs/RECRUITER_EVIDENCE.md`
-- `docs/GITHUB_WORKFLOW.md`
-- `docs/ROADMAP.md`
-
-## Limitações conhecidas do MVP
-
-- A busca vetorial usa SQLite + cálculo em Python, suficiente para portfólio e datasets pequenos.
-- Não há autenticação, pois o app é local-first e não deve ser exposto publicamente sem camada adicional.
-- O parser inicial aceita texto, Markdown e arquivos UTF-8 simples. PDF pode entrar em issue futura.
-- O provider `hash` não substitui embeddings reais; ele existe para teste determinístico e demo sem dependências externas.
-
-## Licença
-
-MIT. Ver `LICENSE`.
-
-<!-- DEMO_SECTION_START -->
-## Demo
-
-A reproducible local demo is documented in `docs/DEMO.md`.
-
-It includes:
-
-- sample content in `examples/sialabs-demo-context.md`;
-- a seed script in `scripts/seed-demo.ps1`;
-- suggested demo questions;
-- validation steps;
-- optional Ollama mode.
-
-Quick seed command, after starting the backend:
+After starting the backend:
 
 ~~~powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\seed-demo.ps1
 ~~~
-<!-- DEMO_SECTION_END -->
 
-<!-- OLLAMA_SMOKE_TEST_SECTION_START -->
-## Ollama smoke test
+Suggested question:
 
-The optional local AI mode can be validated with `docs/OLLAMA_SMOKE_TEST.md`.
+~~~text
+What is SIALabs Local RAG and what skills does it demonstrate?
+~~~
 
-It includes:
+## Run with Ollama and Gemma
 
-- checking the local Ollama API;
-- listing installed local models;
-- verifying configured chat and embedding models;
-- optionally running direct chat and embedding smoke requests;
-- switching the app between mock/hash mode and Ollama mode.
+Install and start Ollama locally.
 
-Quick check command:
+Pull validated models:
 
 ~~~powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\check-ollama.ps1
+ollama pull gemma4:e2b
+ollama pull gemma3:4b
+ollama pull embeddinggemma
 ~~~
-<!-- OLLAMA_SMOKE_TEST_SECTION_END -->
 
-<!-- PDF_INGESTION_SECTION_START -->
-## PDF ingestion
+Run a direct Ollama smoke test:
 
-The upload flow supports `.txt`, `.md`, `.markdown` and text-based `.pdf` files.
+~~~powershell
+$env:OLLAMA_CHAT_MODEL = "gemma4:e2b"
+$env:OLLAMA_EMBED_MODEL = "embeddinggemma"
 
-PDF support is intentionally limited to extractable text. Scanned PDFs, OCR, image extraction and table reconstruction are out of scope for the current MVP.
-<!-- PDF_INGESTION_SECTION_END -->
+powershell -ExecutionPolicy Bypass -File .\scripts\check-ollama.ps1 -RunSmokeRequests
+~~~
 
-<!-- REAL_OLLAMA_VALIDATION_SECTION_START -->
-## Real Ollama validation
+Run the backend in Ollama mode:
 
-A real local Ollama validation was completed with:
+~~~powershell
+$env:LLM_PROVIDER = "ollama"
+$env:EMBEDDING_PROVIDER = "ollama"
+$env:OLLAMA_BASE_URL = "http://localhost:11434"
+$env:OLLAMA_CHAT_MODEL = "gemma4:e2b"
+$env:OLLAMA_EMBED_MODEL = "embeddinggemma"
 
-- chat model: gemma3:4b;
-- embedding model: embeddinggemma.
+cd backend
+uv run uvicorn sialabs_local_rag.main:app --reload --host 0.0.0.0 --port 8000
+~~~
 
-See docs/REAL_OLLAMA_VALIDATION.md.
-<!-- REAL_OLLAMA_VALIDATION_SECTION_END -->
+## Features
 
-<!-- E2E_OLLAMA_RAG_FLOW_SECTION_START -->
-## E2E Ollama RAG flow
+- Create documents from pasted text.
+- Upload `.txt`, `.md`, `.markdown` and text-based `.pdf` files.
+- Split content into overlapping chunks.
+- Generate deterministic hash embeddings for CI/demo mode.
+- Generate local embeddings through Ollama in local AI mode.
+- Store documents and chunks locally in SQLite.
+- Retrieve relevant chunks using cosine similarity.
+- Generate contextual answers with source attribution.
+- List and delete documents.
+- Expose healthcheck and safe public configuration endpoints.
+- Run local validation through a single script.
 
-A full local end-to-end Ollama RAG validation was completed with:
+## Validation
 
-- backend provider: `ollama`;
-- chat model: `gemma3:4b`;
-- embedding model: `embeddinggemma`;
-- seeded demo document;
-- retrieved sources returned in the chat response.
+Full local validation:
 
-See `docs/E2E_OLLAMA_RAG_FLOW.md`.
-<!-- E2E_OLLAMA_RAG_FLOW_SECTION_END -->
+~~~powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\validate-local.ps1
+~~~
 
-<!-- GEMMA4_OLLAMA_VALIDATION_SECTION_START -->
-## Gemma 4 Ollama validation
+This runs:
 
-A direct local Ollama smoke test was completed with:
+- backend lock/sync;
+- Ruff;
+- pytest;
+- mypy;
+- frontend install;
+- TypeScript typecheck;
+- frontend build;
+- Docker Compose config check.
 
-- chat model: gemma4:e2b;
-- embedding model: embeddinggemma.
+Ollama validation:
 
-The project now documents two validated local chat model paths:
+~~~powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\check-ollama.ps1 -RunSmokeRequests
+~~~
 
-- gemma3:4b as a lightweight validated model;
-- gemma4:e2b as a newer validated Gemma 4 model.
+## Known limitations
 
-See docs/GEMMA4_OLLAMA_VALIDATION.md.
-<!-- GEMMA4_OLLAMA_VALIDATION_SECTION_END -->
+- SQLite plus Python similarity search is suitable for local demos and small datasets, not large-scale vector search.
+- The app has no authentication because it is designed as a local-first MVP.
+- It should not be exposed publicly without an additional security layer.
+- PDF support is limited to extractable text.
+- Scanned PDFs, OCR, image extraction and table reconstruction are out of scope for the MVP.
+- Gemma 4 was validated through a direct Ollama smoke test, but the full RAG E2E validation was performed with `gemma3:4b`.
+- No performance benchmark is claimed.
+
+## License
+
+MIT. See `LICENSE`.
