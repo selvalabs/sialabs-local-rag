@@ -7,12 +7,18 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $title = "SIALabs Local RAG Demo Context"
+$resolvedFilePath = (Resolve-Path $FilePath).Path
 
-if (!(Test-Path $FilePath)) {
+if (!(Test-Path $resolvedFilePath)) {
   throw "Demo file not found: $FilePath"
 }
 
-$content = Get-Content $FilePath -Raw
+# Use .NET ReadAllText to avoid Windows PowerShell serializing Get-Content
+# strings with PSPath/PSParentPath metadata inside ConvertTo-Json.
+$content = [System.IO.File]::ReadAllText(
+  $resolvedFilePath,
+  [System.Text.Encoding]::UTF8
+)
 
 Write-Host "Checking API health at $ApiUrl/health ..."
 Invoke-RestMethod -Uri "$ApiUrl/health" -Method Get | Out-Null
@@ -28,11 +34,13 @@ if ($null -ne $existing) {
   exit 0
 }
 
-$payload = @{
+$payloadObject = @{
   title = $title
-  content = $content
+  content = [string]$content
   source_type = "demo-seed"
-} | ConvertTo-Json -Depth 5
+}
+
+$payload = $payloadObject | ConvertTo-Json -Depth 5
 
 Write-Host "Posting demo document to $ApiUrl/api/documents ..."
 $response = Invoke-RestMethod `

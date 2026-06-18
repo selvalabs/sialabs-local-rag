@@ -221,3 +221,17 @@ A real local Ollama validation was completed with:
 
 See docs/REAL_OLLAMA_VALIDATION.md.
 <!-- REAL_OLLAMA_VALIDATION_SECTION_END -->
+
+<!-- E2E_OLLAMA_RAG_FLOW_SECTION_START -->
+## E2E Ollama RAG flow
+
+A full local end-to-end Ollama RAG validation was completed with:
+
+- backend provider: `ollama`;
+- chat model: `gemma3:4b`;
+- embedding model: `embeddinggemma`;
+- seeded demo document;
+- retrieved sources returned in the chat response.
+
+See `docs/E2E_OLLAMA_RAG_FLOW.md`.
+<!-- E2E_OLLAMA_RAG_FLOW_SECTION_END -->
