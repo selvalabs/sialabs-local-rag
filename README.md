@@ -235,3 +235,19 @@ A full local end-to-end Ollama RAG validation was completed with:
 
 See `docs/E2E_OLLAMA_RAG_FLOW.md`.
 <!-- E2E_OLLAMA_RAG_FLOW_SECTION_END -->
+
+<!-- GEMMA4_OLLAMA_VALIDATION_SECTION_START -->
+## Gemma 4 Ollama validation
+
+A direct local Ollama smoke test was completed with:
+
+- chat model: gemma4:e2b;
+- embedding model: embeddinggemma.
+
+The project now documents two validated local chat model paths:
+
+- gemma3:4b as a lightweight validated model;
+- gemma4:e2b as a newer validated Gemma 4 model.
+
+See docs/GEMMA4_OLLAMA_VALIDATION.md.
+<!-- GEMMA4_OLLAMA_VALIDATION_SECTION_END -->
