@@ -119,6 +119,21 @@ Open:
 - API: `http://localhost:8000`
 - Swagger/OpenAPI: `http://localhost:8000/docs`
 
+## How to use the app
+
+After the backend and frontend are running:
+
+1. Open `http://localhost:5173` in the browser.
+2. Create a document by pasting text, or upload a supported file.
+3. Supported file types are `.txt`, `.md`, `.markdown` and text-based `.pdf`.
+4. Wait for the document to be indexed into chunks.
+5. Ask a question about the uploaded or seeded content.
+6. Review the generated answer.
+7. Inspect the retrieved sources returned with the answer.
+8. Delete documents when they are no longer needed.
+
+The app is designed for local use. Documents and chunks are stored locally in SQLite, and local AI mode can run through Ollama instead of a cloud LLM provider.
+
 ## Seed demo content
 
 After starting the backend:
