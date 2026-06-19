@@ -1,4 +1,4 @@
-﻿# SoberanIA Labs Local RAG
+# SoberanIA Labs Local RAG
 
 Local-first RAG application for private document Q&A with FastAPI, React, SQLite and local AI through Ollama/Gemma.
 
