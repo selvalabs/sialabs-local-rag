@@ -26,14 +26,14 @@ Limitação: embeddings por hash não são semanticamente equivalentes a modelos
 LLM_PROVIDER=ollama
 EMBEDDING_PROVIDER=ollama
 OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_CHAT_MODEL=gemma4
+OLLAMA_CHAT_MODEL=gemma4:e2b
 OLLAMA_EMBED_MODEL=embeddinggemma
 ```
 
 Comandos sugeridos:
 
 ```powershell
-ollama pull gemma4
+ollama pull gemma4:e2b
 ollama pull embeddinggemma
 ```
 
@@ -56,3 +56,4 @@ O projeto demonstra que IA aplicada não é apenas chamada de API. A implementa�
 - prompt contextualizado;
 - resposta com fontes;
 - persistência e recuperação.
+

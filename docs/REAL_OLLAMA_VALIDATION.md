@@ -1,6 +1,6 @@
 # Real Ollama Validation
 
-This document records the first real local-model validation for SIALabs Local RAG.
+This document records the first real local-model validation for SoberanIA Labs Local RAG.
 
 ## Validation date
 

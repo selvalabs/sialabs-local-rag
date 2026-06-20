@@ -1,6 +1,6 @@
 # Demo Guide
 
-This guide explains how to run a reproducible local demo of SIALabs Local RAG.
+This guide explains how to run a reproducible local demo of SoberanIA Labs Local RAG.
 
 The goal is to make the project easy to evaluate in a portfolio review, interview or technical walkthrough.
 
@@ -55,7 +55,7 @@ Expected result:
 In the chat UI, try:
 
 ~~~text
-What is SIALabs Local RAG?
+What is SoberanIA Labs Local RAG?
 ~~~
 
 ~~~text
@@ -103,7 +103,7 @@ To use Ollama, copy `.env.example` to `.env` and set:
 LLM_PROVIDER=ollama
 EMBEDDING_PROVIDER=ollama
 OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_CHAT_MODEL=gemma4
+OLLAMA_CHAT_MODEL=gemma4:e2b
 OLLAMA_EMBED_MODEL=embeddinggemma
 ~~~
 
@@ -131,3 +131,4 @@ Use a PDF that contains selectable text, not a scanned image. Upload it through 
 
 Current limitation: OCR for scanned PDFs is intentionally out of scope for this MVP.
 <!-- PDF_INGESTION_SECTION_END -->
+

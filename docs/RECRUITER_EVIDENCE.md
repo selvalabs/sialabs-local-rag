@@ -28,3 +28,4 @@ Pontos fortes para explicar:
 - Como evoluir para pgvector, Supabase ou Qdrant.
 - Por que o histórico GitHub faz parte do portfólio.
 - Como o CI garante qualidade sem depender de modelo local.
+

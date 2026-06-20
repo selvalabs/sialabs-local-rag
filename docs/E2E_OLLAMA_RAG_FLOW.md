@@ -1,6 +1,6 @@
 # E2E Ollama RAG Flow Validation
 
-This document records the first end-to-end local Ollama RAG validation for SIALabs Local RAG.
+This document records the first end-to-end local Ollama RAG validation for SoberanIA Labs Local RAG.
 
 ## Validation date
 
@@ -27,7 +27,7 @@ The backend reported the following runtime configuration:
 
 ~~~json
 {
-  "app_name": "SIALabs Local RAG",
+  "app_name": "SoberanIA Labs Local RAG",
   "llm_provider": "ollama",
   "llm_model": "gemma3:4b",
   "embedding_provider": "ollama",
@@ -56,7 +56,7 @@ The demo document was created successfully:
 ~~~json
 {
   "id": "48ac355c-34c4-4d55-bd83-75d313765e51",
-  "title": "SIALabs Local RAG Demo Context",
+  "title": "SoberanIA Labs Local RAG Demo Context",
   "source_type": "demo-seed",
   "total_chars": 1927,
   "total_chunks": 2
@@ -66,7 +66,7 @@ The demo document was created successfully:
 ## RAG query
 
 ~~~text
-What is SIALabs Local RAG and what skills does it demonstrate?
+What is SoberanIA Labs Local RAG and what skills does it demonstrate?
 ~~~
 
 ## RAG result summary
@@ -77,7 +77,7 @@ The API returned:
 - model: `gemma3:4b`
 - retrieval_top_k: `5`
 - sources returned: `2`
-- source document: `SIALabs Local RAG Demo Context`
+- source document: `SoberanIA Labs Local RAG Demo Context`
 - latency_ms: `35973`
 
 ## Script issue found and fixed
@@ -109,7 +109,7 @@ A future issue can improve encoding handling and demo text normalization if need
 
 ## Portfolio relevance
 
-This validation demonstrates that SIALabs Local RAG is not only CI-testable with mock/hash providers, but also operational with real local AI models through Ollama.
+This validation demonstrates that SoberanIA Labs Local RAG is not only CI-testable with mock/hash providers, but also operational with real local AI models through Ollama.
 
 The project now has evidence for:
 

@@ -9,7 +9,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """Runtime configuration loaded from environment variables."""
 
-    app_name: str = "SIALabs Local RAG"
+    app_name: str = "SoberanIA Labs Local RAG"
     app_env: str = "development"
     api_prefix: str = "/api"
     database_url: str = "sqlite:///./data/sialabs_local_rag.db"
@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     embedding_provider: Literal["hash", "ollama"] = "hash"
 
     ollama_base_url: str = "http://localhost:11434"
-    ollama_chat_model: str = "gemma4"
+    ollama_chat_model: str = "gemma4:e2b"
     ollama_embed_model: str = "embeddinggemma"
     ollama_request_timeout_seconds: float = Field(default=120.0, gt=0)
 
@@ -37,3 +37,4 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+

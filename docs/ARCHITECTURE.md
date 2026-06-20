@@ -2,7 +2,7 @@
 
 ## Visão geral
 
-O SIALabs Local RAG é uma aplicação local-first composta por frontend React, backend FastAPI, banco SQLite e integração opcional com Ollama.
+O SoberanIA Labs Local RAG é uma aplicação local-first composta por frontend React, backend FastAPI, banco SQLite e integração opcional com Ollama.
 
 ```mermaid
 flowchart LR
@@ -44,7 +44,7 @@ O frontend consome endpoints REST documentados automaticamente pelo FastAPI. Iss
 
 ## Fluxo RAG
 
-1. Usuário cria documento ou faz upload de texto/Markdown.
+1. Usuário cria documento ou faz upload de texto, Markdown ou PDF com texto selecionável.
 2. Backend normaliza o conteúdo.
 3. Backend quebra o conteúdo em chunks com overlap.
 4. Provider gera embeddings para cada chunk.
@@ -64,4 +64,6 @@ O frontend consome endpoints REST documentados automaticamente pelo FastAPI. Iss
 | Hash embeddings em CI | validação sem modelo | não é semântico como embedding real |
 | FastAPI | documentação automática | backend em stack separada do frontend |
 | Sem auth no MVP | foco local-first | não deve ir para internet sem proteção |
-| Sem PDF no primeiro PR | escopo pequeno | parser documental entra em issue futura |
+| PDF apenas com texto selecionável | suporte documental útil sem OCR | PDFs escaneados ficam fora do escopo |
+
+

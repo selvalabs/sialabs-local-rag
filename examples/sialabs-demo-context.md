@@ -1,6 +1,6 @@
-# SIALabs Local RAG — Demo Context
+# SoberanIA Labs Local RAG — Demo Context
 
-SIALabs Local RAG is a local-first portfolio project created to demonstrate applied AI, full stack development, API design, local data ownership and reproducible engineering workflow.
+SoberanIA Labs Local RAG is a local-first portfolio project created to demonstrate applied AI, full stack development, API design, local data ownership and reproducible engineering workflow.
 
 The application allows a user to ingest text or Markdown documents, split the content into chunks, generate embeddings, store everything locally in SQLite and ask questions through a retrieval-augmented generation flow.
 
@@ -18,7 +18,7 @@ The main product idea is to give users a private local assistant for their own k
 
 Suggested demo questions:
 
-- What is SIALabs Local RAG?
+- What is SoberanIA Labs Local RAG?
 - Which technologies are used in this project?
 - Why does the project support mock/hash mode?
 - How does the local AI mode work?

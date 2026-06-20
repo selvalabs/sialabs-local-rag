@@ -6,7 +6,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$title = "SIALabs Local RAG Demo Context"
+$title = "SoberanIA Labs Local RAG Demo Context"
 $resolvedFilePath = (Resolve-Path $FilePath).Path
 
 if (!(Test-Path $resolvedFilePath)) {

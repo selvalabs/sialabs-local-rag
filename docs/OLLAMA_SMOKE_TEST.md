@@ -1,6 +1,6 @@
 # Ollama Smoke Test
 
-This guide explains how to validate the optional local AI mode for SIALabs Local RAG.
+This guide explains how to validate the optional local AI mode for SoberanIA Labs Local RAG.
 
 The default project mode is `mock/hash`, which is used for CI, interviews and machines without local models. Ollama mode is optional and exists to demonstrate the local model runtime path.
 
@@ -35,14 +35,14 @@ If Ollama is running, the command returns a JSON object with local models.
 The default `.env.example` uses:
 
 ~~~env
-OLLAMA_CHAT_MODEL=gemma4
+OLLAMA_CHAT_MODEL=gemma4:e2b
 OLLAMA_EMBED_MODEL=embeddinggemma
 ~~~
 
 If those model names are available in your Ollama installation, pull them:
 
 ~~~powershell
-ollama pull gemma4
+ollama pull gemma4:e2b
 ollama pull embeddinggemma
 ~~~
 
@@ -64,7 +64,7 @@ Set:
 LLM_PROVIDER=ollama
 EMBEDDING_PROVIDER=ollama
 OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_CHAT_MODEL=gemma4
+OLLAMA_CHAT_MODEL=gemma4:e2b
 OLLAMA_EMBED_MODEL=embeddinggemma
 ~~~
 

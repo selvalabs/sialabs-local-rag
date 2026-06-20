@@ -10,7 +10,7 @@ import {
 } from './api'
 import type { ChatResponse, DocumentRecord, PublicConfig } from './types'
 
-const sampleDocument = `SIALabs Local RAG é uma aplicação local-first para consultar documentos com RAG.
+const sampleDocument = `SoberanIA Labs Local RAG é uma aplicação local-first para consultar documentos com RAG.
 O projeto demonstra React, TypeScript, FastAPI, SQLite, Docker, CI e integração opcional com Ollama.
 O modo mock/hash permite validar o fluxo em ambientes sem GPU ou modelo local.`
 
@@ -276,3 +276,4 @@ function App() {
 }
 
 export default App
+
