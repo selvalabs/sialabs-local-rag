@@ -45,3 +45,4 @@
 - pgvector/Supabase ou Qdrant.
 - Migrations.
 - Benchmarks.
+

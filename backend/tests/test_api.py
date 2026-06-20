@@ -55,9 +55,9 @@ def test_create_document_and_chat(client: TestClient) -> None:
     document_response = client.post(
         "/api/documents",
         json={
-            "title": "SIALabs Portfolio",
+            "title": "SoberanIA Labs Portfolio",
             "content": (
-                "SIALabs Local RAG is a portfolio project that demonstrates FastAPI, "
+                "SoberanIA Labs Local RAG is a portfolio project that demonstrates FastAPI, "
                 "React, SQLite, RAG, local embeddings and optional Ollama integration."
             ),
             "source_type": "manual",
@@ -77,7 +77,7 @@ def test_create_document_and_chat(client: TestClient) -> None:
     body = chat_response.json()
     assert body["provider"] == "mock"
     assert body["sources"]
-    assert body["sources"][0]["document_title"] == "SIALabs Portfolio"
+    assert body["sources"][0]["document_title"] == "SoberanIA Labs Portfolio"
 
 
 def test_duplicate_document_returns_conflict(client: TestClient) -> None:
@@ -100,7 +100,7 @@ def test_upload_markdown_document_still_works(client: TestClient) -> None:
         files={
             "file": (
                 "demo.md",
-                b"# Demo\n\nSIALabs Local RAG supports Markdown upload for local indexing.",
+                b"# Demo\n\nSoberanIA Labs Local RAG supports Markdown upload for local indexing.",
                 "text/markdown",
             )
         },
@@ -115,7 +115,7 @@ def test_upload_markdown_document_still_works(client: TestClient) -> None:
 
 def test_document_upload_accepts_text_pdf(client: TestClient) -> None:
     pdf_content = build_minimal_pdf_with_text(
-        "SIALabs PDF ingestion support validates text extraction for RAG."
+        "SoberanIA Labs PDF ingestion support validates text extraction for RAG."
     )
 
     response = client.post(

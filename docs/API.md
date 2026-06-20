@@ -93,3 +93,5 @@ Limitations:
 - tables are not reconstructed;
 - password-protected or damaged PDFs return a validation error.
 <!-- PDF_INGESTION_SECTION_END -->
+
+
