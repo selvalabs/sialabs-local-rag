@@ -1,8 +1,6 @@
 # Demo Guide
 
-This guide explains how to run a reproducible local demo of SoberanIA Labs Local RAG.
-
-The goal is to make the project easy to evaluate in a portfolio review, interview or technical walkthrough.
+This guide provides a reproducible local path for running, inspecting and validating SoberanIA Labs Local RAG.
 
 ## 1. Start the backend
 
@@ -14,11 +12,11 @@ uv sync --dev
 uv run uvicorn sialabs_local_rag.main:app --reload --host 0.0.0.0 --port 8000
 ~~~
 
-Expected API URLs:
+Expected endpoints:
 
-- API: http://localhost:8000
-- Swagger/OpenAPI: http://localhost:8000/docs
-- Healthcheck: http://localhost:8000/health
+- API: `http://localhost:8000`
+- Swagger/OpenAPI: `http://localhost:8000/docs`
+- Health check: `http://localhost:8000/health`
 
 ## 2. Start the frontend
 
@@ -30,13 +28,9 @@ npm ci
 npm run dev
 ~~~
 
-Open:
+Open `http://localhost:5173`.
 
-~~~text
-http://localhost:5173
-~~~
-
-## 3. Seed the demo document
+## 3. Seed a reproducible document
 
 Open a third terminal from the repository root:
 
@@ -44,60 +38,48 @@ Open a third terminal from the repository root:
 powershell -ExecutionPolicy Bypass -File .\scripts\seed-demo.ps1
 ~~~
 
-Expected result:
+The script checks API health, posts `examples/sialabs-demo-context.md` to `/api/documents` and prints the indexed document metadata.
 
-- the script checks `/health`;
-- posts `examples/sialabs-demo-context.md` to `/api/documents`;
-- returns the created document metadata.
+## 4. Ask questions
 
-## 4. Ask demo questions
-
-In the chat UI, try:
+Try:
 
 ~~~text
 What is SoberanIA Labs Local RAG?
 ~~~
 
 ~~~text
-Which technologies are used in this project?
+How are documents and embeddings stored?
 ~~~
 
 ~~~text
-Why does the project support mock/hash mode?
+How does the application return grounded sources?
 ~~~
 
 ~~~text
-How does the local AI mode work?
+What is the difference between Ollama mode and lightweight validation mode?
 ~~~
 
-~~~text
-What skills does this project demonstrate?
-~~~
+The answer should include one or more sources from the seeded document.
 
-The answer should include sources from the seeded document.
-
-## 5. Validate the repository
-
-From the repository root:
+## 5. Run repository validation
 
 ~~~powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\validate-local.ps1
 ~~~
 
-Expected result:
+Expected checks:
 
-- backend lint passes;
+- backend lint and formatting checks pass;
 - backend tests pass;
 - backend typecheck passes;
 - frontend typecheck passes;
-- frontend build passes;
-- Docker Compose config is valid.
+- frontend production build passes;
+- Docker Compose configuration is valid.
 
-## 6. Optional Ollama mode
+## 6. Run with Ollama
 
-The default demo uses mock/hash providers so it can run without local models.
-
-To use Ollama, copy `.env.example` to `.env` and set:
+Copy `.env.example` to `.env`, then configure:
 
 ~~~env
 LLM_PROVIDER=ollama
@@ -107,28 +89,25 @@ OLLAMA_CHAT_MODEL=gemma4:e2b
 OLLAMA_EMBED_MODEL=embeddinggemma
 ~~~
 
-Then make sure Ollama is running and the selected models are available.
+Make sure Ollama is running and the configured models are installed. Validate direct model requests with:
 
-## Portfolio talking points
+~~~powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\check-ollama.ps1 -RunSmokeRequests
+~~~
 
-This demo shows:
+## What the demo validates
 
-- full stack implementation;
-- local-first product thinking;
-- RAG pipeline design;
-- API integration;
-- SQLite persistence;
-- deterministic CI-friendly providers;
-- optional local model runtime;
-- documentation and GitHub workflow discipline.
+- document ingestion and parsing;
+- chunking and local persistence;
+- embedding generation;
+- cosine-similarity retrieval;
+- answer generation with retrieved context;
+- source attribution;
+- provider and model metadata;
+- deterministic repository validation.
 
-<!-- PDF_INGESTION_SECTION_START -->
-## PDF upload demo
+## PDF upload
 
-The demo can also be tested with a text-based PDF.
+Use a PDF that contains selectable text, not a scanned image. Upload it through the file upload card, wait for indexing and ask a question about its content.
 
-Use a PDF that contains selectable text, not a scanned image. Upload it through the file upload card and ask a question about its content.
-
-Current limitation: OCR for scanned PDFs is intentionally out of scope for this MVP.
-<!-- PDF_INGESTION_SECTION_END -->
-
+OCR for scanned PDFs is not supported.

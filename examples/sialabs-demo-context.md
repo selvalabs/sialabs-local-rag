@@ -1,26 +1,33 @@
 # SoberanIA Labs Local RAG — Demo Context
 
-SoberanIA Labs Local RAG is a local-first portfolio project created to demonstrate applied AI, full stack development, API design, local data ownership and reproducible engineering workflow.
+SoberanIA Labs Local RAG is a local-first application for private document question answering. It indexes document content locally, retrieves relevant chunks for each question and returns answers together with their sources.
 
-The application allows a user to ingest text or Markdown documents, split the content into chunks, generate embeddings, store everything locally in SQLite and ask questions through a retrieval-augmented generation flow.
+The application accepts pasted text and uploads of `.txt`, `.md`, `.markdown` and text-based `.pdf` files. PDFs must contain extractable text; scanned images are not processed with OCR.
 
-The project supports two execution modes.
+The backend is built with Python, FastAPI and Pydantic. The frontend uses React, Vite and TypeScript. Documents, chunks and embeddings are stored in SQLite.
 
-In demo mode, the application uses deterministic hash embeddings and a mock language model response. This makes the project easy to validate in CI, interviews and machines without local AI models installed.
+The RAG pipeline follows these steps:
 
-In local AI mode, the application can use Ollama as a local model runtime. The chat model and embedding model are configurable through environment variables, allowing the system to run with local open-weight models when available.
+1. parse and normalize document content;
+2. split the content into overlapping chunks;
+3. generate an embedding for each chunk;
+4. store chunks and embeddings locally;
+5. embed the user's question;
+6. rank chunks with cosine similarity;
+7. send retrieved context to the chat provider;
+8. return the answer with source metadata.
 
-The architecture is intentionally simple and inspectable. The backend is built with FastAPI, Pydantic and SQLite. The frontend is built with React, Vite and TypeScript. The repository includes Docker Compose, GitHub Actions, tests, documentation and a controlled GitHub workflow based on issues, branches, pull requests and CI.
+In Ollama mode, the application uses locally installed chat and embedding models. Validated models include `gemma3:4b`, `gemma4:e2b` and `embeddinggemma`.
 
-This project demonstrates practical skills in backend development, frontend development, REST APIs, data modeling, local AI integration, RAG pipelines, documentation, testing, Docker and GitHub-based delivery.
+A lightweight mock/hash mode is available for automated tests and CI. It validates the application pipeline deterministically but does not represent real semantic retrieval or model quality.
 
-The main product idea is to give users a private local assistant for their own knowledge base, without requiring documents to be sent to a cloud LLM provider.
+The current application is intended for trusted local use. It does not include authentication, multi-user authorization, OCR, large-scale vector search or production hardening for public exposure.
 
-Suggested demo questions:
+Suggested questions:
 
 - What is SoberanIA Labs Local RAG?
-- Which technologies are used in this project?
-- Why does the project support mock/hash mode?
-- How does the local AI mode work?
-- What skills does this project demonstrate?
-- Why is this project relevant for a portfolio?
+- Which file types can it index?
+- How are documents and embeddings stored?
+- How does retrieval work?
+- How are sources returned with an answer?
+- What is the difference between Ollama mode and lightweight validation mode?

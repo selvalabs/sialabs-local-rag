@@ -1,39 +1,61 @@
-# Testing Strategy
+# Testing
 
-## Objetivo
+## Objective
 
-Garantir que o primeiro PR seja validável localmente e em CI sem exigir Ollama ou GPU.
+Validate application behavior locally and in CI without requiring Ollama, a GPU or downloaded model files.
 
-## Camadas testadas
+## Test layers
 
-### Unitário
+### Backend unit and service tests
 
-- Normalização e chunking.
-- Similaridade vetorial.
-- Normalização de vetores.
+- text normalization and chunking;
+- vector normalization and cosine similarity;
+- provider and service orchestration;
+- local storage behavior.
 
-### API
+### API tests
 
-- Healthcheck.
-- Criação de documento.
-- Chat com fontes usando mock/hash.
-- Documento duplicado.
-- Upload com extensão inválida.
+- health check;
+- document creation and duplicate handling;
+- chat responses with retrieved sources;
+- Markdown upload;
+- text-based PDF upload;
+- unreadable PDF rejection;
+- unsupported extension rejection.
 
-### Frontend
+### Frontend checks
 
-- `npm run typecheck`.
-- `npm run build`.
+- TypeScript typecheck;
+- production build.
 
-## Comandos
+### Configuration checks
+
+- Docker Compose configuration validation.
+
+## Complete local validation
+
+From the repository root:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\validate-local.ps1
+```
+
+The script performs backend dependency resolution, Ruff checks, pytest, mypy, frontend installation, TypeScript typecheck, frontend build and Docker Compose configuration validation.
+
+## Individual commands
+
+Backend:
 
 ```powershell
 cd backend
+uv sync --dev
 uv run ruff check . --fix
 uv run ruff check .
 uv run pytest
 uv run mypy src
 ```
+
+Frontend:
 
 ```powershell
 cd frontend
@@ -42,14 +64,27 @@ npm run typecheck
 npm run build
 ```
 
-## Estratégia de CI
+Docker Compose:
 
-O CI usa providers locais determinísticos, não Ollama. Isso evita falhas por hardware/modelos ausentes e mantém o pipeline rápido.
+```powershell
+docker compose config
+```
 
-## Testes futuros
+## CI strategy
 
-- Teste de integração com Ollama usando profile manual.
-- Testes de upload Markdown real.
-- Testes de parser PDF.
-- Testes de latência em bases maiores.
-- Testes de regressão de prompts.
+CI uses deterministic mock/hash providers so validation does not depend on local hardware or downloaded model availability. Real Ollama execution is validated separately through explicit local smoke and end-to-end checks.
+
+## Local AI validation
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\check-ollama.ps1 -RunSmokeRequests
+```
+
+See [`VALIDATION.md`](VALIDATION.md) for the validated model combinations and scope.
+
+## Current gaps
+
+- No browser-driven end-to-end test suite.
+- No retrieval-quality benchmark dataset.
+- No load or sustained-latency benchmark.
+- No automated OCR or scanned-PDF test path because OCR is unsupported.

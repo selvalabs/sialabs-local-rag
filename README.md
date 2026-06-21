@@ -1,35 +1,25 @@
 # SoberanIA Labs Local RAG
 
-Local-first RAG application for private document Q&A with FastAPI, React, SQLite and local AI through Ollama/Gemma.
+Local-first retrieval-augmented generation application for private document Q&A with FastAPI, React, SQLite and local AI through Ollama/Gemma.
 
-This repository is a technical portfolio project. It demonstrates how to build, validate and document a small but complete AI product using a professional GitHub workflow.
+## Overview
 
-## Why this project exists
+SoberanIA Labs Local RAG provides a private-by-default workflow for indexing local documents and asking grounded questions about their content. Documents, chunks and embeddings remain in local SQLite storage, while answer generation can run through locally installed Ollama models.
 
-Many AI document assistants depend on cloud APIs and remote storage. SoberanIA Labs Local RAG demonstrates a smaller, private-by-default alternative: documents are indexed locally, stored in SQLite and queried through a local RAG pipeline that can run with Ollama/Gemma.
+This repository is a reference implementation for local and small-dataset use. It is not presented as a production SaaS.
 
-The goal is not to present a production SaaS. The goal is to show product thinking, full stack implementation, local AI integration, source-grounded answers, reproducible validation and clear engineering process.
+## Capabilities
 
-## What this project demonstrates
-
-- Full stack development with React, TypeScript, Python and FastAPI.
-- REST API design with typed request/response contracts.
-- Local-first document storage with SQLite.
-- Retrieval-augmented generation with ingestion, chunking, embeddings, retrieval and source-grounded answers.
-- Local AI runtime using Ollama, Gemma and EmbeddingGemma.
-- Testable provider architecture for deterministic CI without local model downloads.
-- Engineering workflow with issues, branches, Conventional Commits, pull requests, CI and validation evidence.
-
-## What the app does
-
-1. Accepts pasted text or uploaded files.
-2. Supports `.txt`, `.md`, `.markdown` and text-based `.pdf` files.
-3. Splits documents into overlapping chunks.
-4. Generates embeddings for retrieval.
-5. Stores documents, chunks and embeddings locally in SQLite.
-6. Retrieves relevant chunks for a user question.
-7. Generates an answer with retrieved sources.
-8. Shows source chunks, scores, provider/model metadata and latency.
+- Create documents from pasted text.
+- Upload `.txt`, `.md`, `.markdown` and text-based `.pdf` files.
+- Split content into overlapping chunks.
+- Generate local embeddings through Ollama.
+- Store documents, chunks and embeddings in SQLite.
+- Retrieve relevant chunks with cosine similarity.
+- Generate contextual answers with source attribution.
+- Show source chunks, similarity scores, model metadata and latency.
+- List and delete indexed documents.
+- Validate the application without local model downloads through deterministic test providers.
 
 ## RAG flow
 
@@ -41,114 +31,39 @@ Document or file upload
   -> SQLite storage
   -> question embedding
   -> cosine similarity retrieval
-  -> Gemma/Ollama answer generation
+  -> Ollama/Gemma answer generation
   -> answer with sources
 ~~~
 
-## Current status
-
-The MVP is implemented and validated.
-
-Validated paths:
+## Validated status
 
 | Path | Status |
 | --- | --- |
 | Text and Markdown ingestion | Validated |
 | Text-based PDF ingestion | Validated |
-| Ollama smoke test | Validated |
+| Deterministic test mode | Validated with mock/hash providers |
 | Gemma 3 local runtime | Validated with `gemma3:4b` |
 | Gemma 4 local runtime | Validated with `gemma4:e2b` |
-| Full local Ollama RAG E2E flow | Validated with `gemma3:4b` + `embeddinggemma` |
-| Deterministic CI/test mode | Validated with mock/hash providers |
+| Local embedding runtime | Validated with `embeddinggemma` |
+| Full local Ollama RAG flow | Validated with `gemma3:4b` + `embeddinggemma` |
 
-This is a local-first portfolio MVP focused on architecture, reproducibility, privacy and technical evidence.
-
-## Evidence
-
-| Evidence | Document |
-| --- | --- |
-| Architecture | `docs/ARCHITECTURE.md` |
-| API contract | `docs/API.md` |
-| Testing strategy | `docs/TESTING.md` |
-| Security and privacy notes | `docs/SECURITY_PRIVACY.md` |
-| Local AI design | `docs/LOCAL_AI.md` |
-| Reproducible demo flow | `docs/DEMO.md` |
-| Ollama smoke test | `docs/OLLAMA_SMOKE_TEST.md` |
-| Real Ollama validation | `docs/REAL_OLLAMA_VALIDATION.md` |
-| Full Ollama RAG E2E validation | `docs/E2E_OLLAMA_RAG_FLOW.md` |
-| Gemma 4 validation | `docs/GEMMA4_OLLAMA_VALIDATION.md` |
-| Roadmap | `docs/ROADMAP.md` |
+See [`docs/VALIDATION.md`](docs/VALIDATION.md) for scope and limitations.
 
 ## Stack
 
 | Layer | Technology |
 | --- | --- |
 | Frontend | React, TypeScript, Vite, responsive CSS |
-| Backend | FastAPI, Pydantic, SQLite, httpx |
+| Backend | Python, FastAPI, Pydantic, SQLite, httpx |
 | RAG | chunking, embeddings, cosine similarity, source attribution |
 | Local AI | Ollama, Gemma, EmbeddingGemma |
 | Tests | pytest, FastAPI TestClient, TypeScript typecheck |
 | Quality | Ruff, mypy, frontend build |
-| Infra | Docker Compose, GitHub Actions |
+| Infrastructure | Docker Compose, GitHub Actions |
 
-## Run with Ollama and Gemma
+## Quick start
 
-Install and start Ollama locally.
-
-Pull validated models:
-
-~~~powershell
-ollama pull gemma4:e2b
-ollama pull gemma3:4b
-ollama pull embeddinggemma
-~~~
-
-Run a direct Ollama smoke test:
-
-~~~powershell
-$env:OLLAMA_CHAT_MODEL = "gemma4:e2b"
-$env:OLLAMA_EMBED_MODEL = "embeddinggemma"
-
-powershell -ExecutionPolicy Bypass -File .\scripts\check-ollama.ps1 -RunSmokeRequests
-~~~
-
-Run the backend in Ollama mode:
-
-~~~powershell
-$env:LLM_PROVIDER = "ollama"
-$env:EMBEDDING_PROVIDER = "ollama"
-$env:OLLAMA_BASE_URL = "http://localhost:11434"
-$env:OLLAMA_CHAT_MODEL = "gemma4:e2b"
-$env:OLLAMA_EMBED_MODEL = "embeddinggemma"
-
-cd backend
-uv run uvicorn sialabs_local_rag.main:app --reload --host 0.0.0.0 --port 8000
-~~~
-
-Run the frontend:
-
-~~~powershell
-cd frontend
-npm ci
-npm run dev
-~~~
-
-Open:
-
-- Frontend: `http://localhost:5173`
-- API: `http://localhost:8000`
-- Swagger/OpenAPI: `http://localhost:8000/docs`
-
-## Quick start without Ollama
-
-For machines without local models, the app can run with deterministic lightweight providers:
-
-~~~env
-LLM_PROVIDER=mock
-EMBEDDING_PROVIDER=hash
-~~~
-
-This mode is mainly used for CI, tests and quick architecture demos. The real local AI path uses Ollama/Gemma.
+Prerequisites and additional options are documented in [`docs/LOCAL_SETUP.md`](docs/LOCAL_SETUP.md).
 
 Terminal 1 — backend:
 
@@ -166,24 +81,63 @@ npm ci
 npm run dev
 ~~~
 
-## How to use the app
+Open:
 
-After the backend and frontend are running:
+- Frontend: `http://localhost:5173`
+- API: `http://localhost:8000`
+- Swagger/OpenAPI: `http://localhost:8000/docs`
 
-1. Open `http://localhost:5173` in the browser.
-2. Create a document by pasting text, or upload a supported file.
-3. Supported file types are `.txt`, `.md`, `.markdown` and text-based `.pdf`.
-4. Wait for the document to be indexed into chunks.
-5. Ask a question about the uploaded or seeded content.
-6. Review the generated answer.
-7. Inspect the retrieved sources returned with the answer.
-8. Delete documents when they are no longer needed.
+## Run with Ollama and Gemma
 
-The app is designed for local use. Documents and chunks are stored locally in SQLite, and local AI mode can run through Ollama instead of a cloud LLM provider.
+Install and start Ollama locally, then pull validated models:
 
-## Seed demo content
+~~~powershell
+ollama pull gemma4:e2b
+ollama pull gemma3:4b
+ollama pull embeddinggemma
+~~~
 
-After starting the backend:
+Configure the backend for local AI:
+
+~~~powershell
+$env:LLM_PROVIDER = "ollama"
+$env:EMBEDDING_PROVIDER = "ollama"
+$env:OLLAMA_BASE_URL = "http://localhost:11434"
+$env:OLLAMA_CHAT_MODEL = "gemma4:e2b"
+$env:OLLAMA_EMBED_MODEL = "embeddinggemma"
+
+cd backend
+uv run uvicorn sialabs_local_rag.main:app --reload --host 0.0.0.0 --port 8000
+~~~
+
+Run a direct model availability and smoke check:
+
+~~~powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\check-ollama.ps1 -RunSmokeRequests
+~~~
+
+## Lightweight validation mode
+
+For CI, automated tests and machines without local models:
+
+~~~env
+LLM_PROVIDER=mock
+EMBEDDING_PROVIDER=hash
+~~~
+
+This mode validates the application pipeline deterministically. It is not semantically equivalent to real local embeddings or model generation.
+
+## Use the app
+
+1. Start the backend and frontend.
+2. Open `http://localhost:5173`.
+3. Create a document from pasted text or upload a supported file.
+4. Wait for indexing to complete.
+5. Ask a question about the indexed content.
+6. Review the answer and retrieved sources.
+7. Delete documents when they are no longer needed.
+
+Seed reproducible demo content with:
 
 ~~~powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\seed-demo.ps1
@@ -192,65 +146,41 @@ powershell -ExecutionPolicy Bypass -File .\scripts\seed-demo.ps1
 Suggested question:
 
 ~~~text
-What is SoberanIA Labs Local RAG and what skills does it demonstrate?
+How does SoberanIA Labs Local RAG keep document Q&A local?
 ~~~
 
-## Features
+## Documentation
 
-- Create documents from pasted text.
-- Upload `.txt`, `.md`, `.markdown` and text-based `.pdf` files.
-- Split content into overlapping chunks.
-- Generate local embeddings through Ollama in local AI mode.
-- Store documents and chunks locally in SQLite.
-- Retrieve relevant chunks using cosine similarity.
-- Generate contextual answers with source attribution.
-- List and delete documents.
-- Expose healthcheck and safe public configuration endpoints.
-- Run deterministic validation through a single script.
+| Topic | Document |
+| --- | --- |
+| Architecture and trade-offs | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
+| API contract | [`docs/API.md`](docs/API.md) |
+| Local setup | [`docs/LOCAL_SETUP.md`](docs/LOCAL_SETUP.md) |
+| Local AI configuration | [`docs/LOCAL_AI.md`](docs/LOCAL_AI.md) |
+| Security and privacy | [`docs/SECURITY_PRIVACY.md`](docs/SECURITY_PRIVACY.md) |
+| Testing strategy | [`docs/TESTING.md`](docs/TESTING.md) |
+| Reproducible demo | [`docs/DEMO.md`](docs/DEMO.md) |
+| Validation evidence | [`docs/VALIDATION.md`](docs/VALIDATION.md) |
 
 ## Validation
 
-Full local validation:
+Run the complete local validation suite:
 
 ~~~powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\validate-local.ps1
 ~~~
 
-This runs:
-
-- backend lock/sync;
-- Ruff;
-- pytest;
-- mypy;
-- frontend install;
-- TypeScript typecheck;
-- frontend build;
-- Docker Compose config check.
-
-Ollama validation:
-
-~~~powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\check-ollama.ps1 -RunSmokeRequests
-~~~
-
-## Future evolution
-
-- Better source display and citation highlighting.
-- Document-level filtering.
-- Simple re-ranking.
-- Screenshot-based portfolio polish.
-- Optional OCR pipeline for scanned PDFs.
-- Optional vector store evolution with pgvector, Supabase or Qdrant.
+It runs backend dependency checks, Ruff, pytest, mypy, frontend installation, TypeScript typecheck, frontend build and Docker Compose configuration validation.
 
 ## Known limitations
 
-- SQLite plus Python similarity search is suitable for local demos and small datasets, not large-scale vector search.
-- The app has no authentication because it is designed as a local-first MVP.
-- It should not be exposed publicly without an additional security layer.
+- SQLite plus Python similarity search is intended for local use and small datasets, not large-scale vector search.
+- The application has no authentication or authorization.
+- It must not be exposed publicly without an additional security layer.
 - PDF support is limited to extractable text.
-- Scanned PDFs, OCR, image extraction and table reconstruction are out of scope for the MVP.
-- Gemma 4 was validated through a direct Ollama smoke test, but the full RAG E2E validation was performed with `gemma3:4b`.
-- No performance benchmark is claimed.
+- Scanned PDFs, OCR, image extraction and table reconstruction are not supported.
+- Gemma 4 was validated through direct Ollama smoke requests; the full RAG flow was validated with `gemma3:4b`.
+- No performance benchmark or answer-quality benchmark is claimed.
 
 ## License
 
