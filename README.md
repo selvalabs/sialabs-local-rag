@@ -67,7 +67,6 @@ This is a local-first portfolio MVP focused on architecture, reproducibility, pr
 
 | Evidence | Document |
 | --- | --- |
-| Recruiter-facing technical evidence | `docs/RECRUITER_EVIDENCE.md` |
 | Architecture | `docs/ARCHITECTURE.md` |
 | API contract | `docs/API.md` |
 | Testing strategy | `docs/TESTING.md` |
