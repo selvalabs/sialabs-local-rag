@@ -78,7 +78,6 @@ This is a local-first portfolio MVP focused on architecture, reproducibility, pr
 | Full Ollama RAG E2E validation | `docs/E2E_OLLAMA_RAG_FLOW.md` |
 | Gemma 4 validation | `docs/GEMMA4_OLLAMA_VALIDATION.md` |
 | Roadmap | `docs/ROADMAP.md` |
-| GitHub workflow | `docs/GITHUB_WORKFLOW.md` |
 
 ## Stack
 
