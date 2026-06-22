@@ -10,7 +10,7 @@
   <circle cx="1120" cy="166" r="34" fill="#0f172a" stroke="#f59e0b" stroke-width="5"/>
   <text x="90" y="112" fill="#e2e8f0" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="700">SoberanIA Labs</text>
   <text x="90" y="184" fill="#f8fafc" font-family="Arial, Helvetica, sans-serif" font-size="68" font-weight="800">Local RAG</text>
-  <text x="94" y="232" fill="#cbd5e1" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="500">Private document Q&amp;A with local AI</text>
+  <text x="94" y="232" fill="#cbd5e1" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="500">Chat with private documents using local LLMs</text>
   <text x="96" y="294" fill="#bae6fd" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="700">FastAPI</text>
   <text x="205" y="294" fill="#ddd6fe" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="700">React</text>
   <text x="286" y="294" fill="#bbf7d0" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="700">SQLite</text>
