@@ -161,7 +161,8 @@ class Storage:
                 )
             )
 
-        return sorted(scored, key=lambda item: item.score, reverse=True)[:top_k]
+        ranked = sorted(scored, key=lambda item: item.score, reverse=True)
+        return self._diversify_sources_by_document(ranked, top_k)
 
     def create_chat_record(
         self,
@@ -195,6 +196,33 @@ class Storage:
                     utc_now_iso(),
                 ),
             )
+
+    @staticmethod
+    def _diversify_sources_by_document(
+        ranked_sources: Sequence[SourceChunk],
+        top_k: int,
+    ) -> list[SourceChunk]:
+        selected: list[SourceChunk] = []
+        selected_chunk_ids: set[str] = set()
+        selected_document_ids: set[str] = set()
+
+        for source in ranked_sources:
+            if source.document_id in selected_document_ids:
+                continue
+            selected.append(source)
+            selected_chunk_ids.add(source.chunk_id)
+            selected_document_ids.add(source.document_id)
+            if len(selected) >= top_k:
+                return selected
+
+        for source in ranked_sources:
+            if source.chunk_id in selected_chunk_ids:
+                continue
+            selected.append(source)
+            if len(selected) >= top_k:
+                return selected
+
+        return selected
 
     @staticmethod
     def _document_from_row(row: sqlite3.Row) -> DocumentResponse:
