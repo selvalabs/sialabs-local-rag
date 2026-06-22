@@ -45,7 +45,7 @@ Document or file upload
 | Gemma 3 local runtime | Validated with `gemma3:4b` |
 | Gemma 4 local runtime | Validated with `gemma4:e2b` |
 | Local embedding runtime | Validated with `embeddinggemma` |
-| Full local Ollama RAG flow | Validated with `gemma3:4b` + `embeddinggemma` |
+| Full local Ollama RAG flow | Validated with `gemma3:4b` and `gemma4:e2b` using `embeddinggemma` |
 
 See [`docs/VALIDATION.md`](docs/VALIDATION.md) for scope and limitations.
 
@@ -179,7 +179,7 @@ It runs backend dependency checks, Ruff, pytest, mypy, frontend installation, Ty
 - It must not be exposed publicly without an additional security layer.
 - PDF support is limited to extractable text.
 - Scanned PDFs, OCR, image extraction and table reconstruction are not supported.
-- Gemma 4 was validated through direct Ollama smoke requests; the full RAG flow was validated with `gemma3:4b`.
+- Full RAG flow was validated with both `gemma3:4b` and `gemma4:e2b` using `embeddinggemma`.
 - No performance benchmark or answer-quality benchmark is claimed.
 
 ## License
