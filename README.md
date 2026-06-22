@@ -1,3 +1,7 @@
+![SoberanIA Labs Local RAG](docs/assets/soberania-labs-local-rag-hero.svg)
+
+**Local-first** · **FastAPI** · **React** · **SQLite** · **Ollama** · **Gemma** · **EmbeddingGemma**
+
 # SoberanIA Labs Local RAG
 
 Local-first retrieval-augmented generation application for private document Q&A with FastAPI, React, SQLite and local AI through Ollama/Gemma.
