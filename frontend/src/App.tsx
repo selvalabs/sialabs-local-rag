@@ -85,7 +85,7 @@ const copy = {
     waitingApi: 'Aguardando configuração pública da API.',
     mockMode: 'Modo determinístico para validação sem modelos locais.',
     usingModel: (model: string, embedding: string) => `Usando ${model} com embeddings ${embedding}.`,
-    heroTitle: 'Converse com documentos locais',
+    heroTitle: 'Converse com documentos',
     heroCopy:
       'Adicione textos ou arquivos, indexe tudo em SQLite e pergunte à base usando RAG local-first com IA local opcional via Ollama/Gemma.',
     stepOneTitle: 'Adicione documentos',
