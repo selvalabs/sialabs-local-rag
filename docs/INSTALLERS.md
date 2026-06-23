@@ -84,7 +84,6 @@ v0.4.0-rc.1
 Run from the repository root:
 
 ~~~powershell
-cd C:\Users\carlo\dev\sialabs-local-rag
 powershell -ExecutionPolicy Bypass -File .\scripts\release-preflight.ps1 -Version v0.3.0 -BuildPwaArchive
 ~~~
 
@@ -96,12 +95,7 @@ The preflight should:
 - build the frontend
 - optionally create a PWA archive under `dist/release/<version>/`
 
-Use `-AllowNonMain` only for dry runs on packaging branches:
-
-~~~powershell
-cd C:\Users\carlo\dev\sialabs-local-rag
-powershell -ExecutionPolicy Bypass -File .\scripts\release-preflight.ps1 -AllowNonMain
-~~~
+Use `-AllowNonMain` only for dry runs on packaging branches.
 
 ## Output convention
 
