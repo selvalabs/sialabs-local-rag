@@ -8,6 +8,7 @@ $ErrorActionPreference = "Stop"
 
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $RepoRoot
+Write-Host "Repository root: $RepoRoot" -ForegroundColor DarkGray
 
 function Invoke-Step {
   param(
