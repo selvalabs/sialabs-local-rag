@@ -23,6 +23,7 @@ This repository is a reference implementation for local and small-dataset use. I
 - Generate contextual answers with source attribution.
 - Show source chunks, similarity scores, model metadata and latency.
 - List and delete indexed documents.
+- Install the frontend as a local PWA app shell on supported browsers.
 - Validate the application without local model downloads through deterministic test providers.
 
 ## RAG flow
@@ -152,6 +153,24 @@ Suggested question:
 ~~~text
 How does SoberanIA Labs Local RAG let you chat with private documents locally?
 ~~~
+
+## Installable app shell
+
+The frontend can be installed as a PWA app shell on supported browsers. This installs the interface only. The FastAPI backend, SQLite database and Ollama runtime still run locally outside the browser.
+
+Build and preview the frontend shell:
+
+~~~powershell
+cd frontend
+npm run build
+npm run preview -- --host 0.0.0.0
+~~~
+
+Open the preview URL, usually `http://localhost:4173`, then use the browser install action.
+
+The PWA service worker caches static frontend assets only. It intentionally does not cache API responses, private document contents or chat responses.
+
+If the backend is stopped, the installed app displays an actionable local API unavailable message. Start the backend on `http://localhost:8000` and reload the app.
 
 ## Documentation
 
