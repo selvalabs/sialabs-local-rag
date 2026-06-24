@@ -2,6 +2,19 @@ import type { ChatResponse, DocumentListResponse, DocumentRecord, PublicConfig }
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
+async function fetchApi(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(input, init)
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw new Error(
+        `Could not reach the local API at ${API_URL}. Start the backend and try again.`,
+      )
+    }
+    throw error
+  }
+}
+
 async function parseJsonResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     let detail = `Request failed with status ${response.status}`
@@ -19,12 +32,12 @@ async function parseJsonResponse<T>(response: Response): Promise<T> {
 }
 
 export async function getConfig(): Promise<PublicConfig> {
-  const response = await fetch(`${API_URL}/api/config`)
+  const response = await fetchApi(`${API_URL}/api/config`)
   return parseJsonResponse<PublicConfig>(response)
 }
 
 export async function listDocuments(): Promise<DocumentRecord[]> {
-  const response = await fetch(`${API_URL}/api/documents`)
+  const response = await fetchApi(`${API_URL}/api/documents`)
   const body = await parseJsonResponse<DocumentListResponse>(response)
   return body.documents
 }
@@ -33,7 +46,7 @@ export async function createDocument(input: {
   title: string
   content: string
 }): Promise<DocumentRecord> {
-  const response = await fetch(`${API_URL}/api/documents`, {
+  const response = await fetchApi(`${API_URL}/api/documents`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -52,7 +65,7 @@ export async function uploadDocument(file: File, title?: string): Promise<Docume
     formData.append('title', title)
   }
 
-  const response = await fetch(`${API_URL}/api/documents/upload`, {
+  const response = await fetchApi(`${API_URL}/api/documents/upload`, {
     method: 'POST',
     body: formData,
   })
@@ -60,7 +73,7 @@ export async function uploadDocument(file: File, title?: string): Promise<Docume
 }
 
 export async function deleteDocument(documentId: string): Promise<void> {
-  const response = await fetch(`${API_URL}/api/documents/${documentId}`, {
+  const response = await fetchApi(`${API_URL}/api/documents/${documentId}`, {
     method: 'DELETE',
   })
   if (!response.ok) {
@@ -69,7 +82,7 @@ export async function deleteDocument(documentId: string): Promise<void> {
 }
 
 export async function askQuestion(question: string): Promise<ChatResponse> {
-  const response = await fetch(`${API_URL}/api/chat`, {
+  const response = await fetchApi(`${API_URL}/api/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ question }),

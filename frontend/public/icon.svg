@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">SoberanIA Labs Local RAG</title>
+  <desc id="desc">Rounded green app icon with local document chat symbol.</desc>
+  <rect width="512" height="512" rx="112" fill="#183d2c"/>
+  <circle cx="378" cy="126" r="54" fill="#8dd7a5" opacity="0.88"/>
+  <circle cx="112" cy="382" r="74" fill="#e2c46d" opacity="0.22"/>
+  <path d="M142 140h160c38 0 68 30 68 68v96c0 38-30 68-68 68H180l-66 52c-12 9-29 1-29-14V208c0-38 30-68 57-68Z" fill="#fffdf6"/>
+  <path d="M164 190h142" stroke="#183d2c" stroke-width="24" stroke-linecap="round"/>
+  <path d="M164 248h184" stroke="#183d2c" stroke-width="24" stroke-linecap="round"/>
+  <path d="M164 306h112" stroke="#183d2c" stroke-width="24" stroke-linecap="round"/>
+</svg>
