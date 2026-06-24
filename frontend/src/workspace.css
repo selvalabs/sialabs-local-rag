@@ -1,6 +1,78 @@
-.toggle-card {
-  padding: 0;
+.action-card {
+  align-self: start;
+  min-height: 196px;
+}
+
+.action-card > button,
+.upload-card > button {
+  justify-self: start;
+  min-width: 9rem;
+  width: auto;
+}
+
+.compact-file-picker {
+  background: var(--soft);
+  border: 1px dashed var(--field-border);
+  border-radius: 16px;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 0.9rem 1rem;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease,
+    transform 120ms ease;
+}
+
+.compact-file-picker:hover {
+  background: var(--soft-strong);
+  border-color: var(--gold);
+  transform: translateY(-1px);
+}
+
+.compact-file-picker span {
+  display: block;
+  font-weight: 900;
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compact-file-picker small {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.compact-file-picker input {
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  width: 1px;
+}
+
+.drop-overlay {
+  align-items: center;
+  backdrop-filter: blur(8px);
+  background: rgba(24, 61, 44, 0.72);
+  border: 2px dashed rgba(255, 253, 246, 0.72);
+  border-radius: 32px;
+  color: #fffdf6;
+  display: flex;
+  font-size: clamp(1.5rem, 4vw, 3rem);
+  font-weight: 900;
+  inset: 1rem;
+  justify-content: center;
+  letter-spacing: -0.04em;
+  pointer-events: none;
+  position: fixed;
+  text-align: center;
+  z-index: 50;
+}
+
+.toggle-card {
+  overflow: hidden;
+  padding: 0;
 }
 
 .toggle-card > summary {
@@ -83,16 +155,49 @@
   max-height: min(680px, 62vh);
 }
 
-.primary-chat-card .chat-form textarea {
-  min-height: 6rem;
+.chat-form {
+  align-items: end;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.chat-form textarea {
+  min-height: 5.5rem;
+}
+
+.chat-form button {
+  align-self: end;
+  min-width: 5.5rem;
+  padding-inline: 1rem;
+  width: auto;
 }
 
 .ingest-grid {
-  align-items: start;
+  align-items: stretch;
 }
 
-.ingest-grid .toggle-card:not([open]) {
-  align-self: start;
+.modal-backdrop {
+  align-items: center;
+  background: rgba(7, 17, 12, 0.68);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 1rem;
+  position: fixed;
+  z-index: 60;
+}
+
+.modal-card {
+  max-height: min(860px, calc(100vh - 2rem));
+  max-width: 760px;
+  overflow: auto;
+  width: min(100%, 760px);
+}
+
+.modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: flex-end;
 }
 
 @media (max-width: 860px) {
@@ -106,5 +211,13 @@
 
   .primary-chat-card .conversation-log {
     max-height: none;
+  }
+
+  .chat-form {
+    grid-template-columns: 1fr;
+  }
+
+  .chat-form button {
+    justify-self: end;
   }
 }
