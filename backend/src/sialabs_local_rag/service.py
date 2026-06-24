@@ -4,8 +4,18 @@ from time import perf_counter
 
 from sialabs_local_rag.chunking import chunk_text
 from sialabs_local_rag.prompting import SYSTEM_PROMPT, build_rag_prompt
-from sialabs_local_rag.providers import ChatProvider, ChatRuntimeOptions, EmbeddingProvider, ProviderError
-from sialabs_local_rag.schemas import ChatResponse, DocumentResponse, RuntimeOptions, RuntimeTestResponse
+from sialabs_local_rag.providers import (
+    ChatProvider,
+    ChatRuntimeOptions,
+    EmbeddingProvider,
+    ProviderError,
+)
+from sialabs_local_rag.schemas import (
+    ChatResponse,
+    DocumentResponse,
+    RuntimeOptions,
+    RuntimeTestResponse,
+)
 from sialabs_local_rag.settings import Settings
 from sialabs_local_rag.storage import ChunkInput, Storage
 
@@ -73,7 +83,7 @@ class RagService:
             )
 
         latency_ms = int((perf_counter() - started_at) * 1000)
-        response_model = runtime_options.model if runtime_options and runtime_options.model else self.chat_provider.model
+        response_model = get_response_model(runtime_options, self.chat_provider.model)
         self.storage.create_chat_record(
             question=question,
             answer=answer,
@@ -92,10 +102,14 @@ class RagService:
             latency_ms=latency_ms,
         )
 
-    async def test_runtime(self, prompt: str, runtime_options: RuntimeOptions | None) -> RuntimeTestResponse:
+    async def test_runtime(
+        self,
+        prompt: str,
+        runtime_options: RuntimeOptions | None,
+    ) -> RuntimeTestResponse:
         started_at = perf_counter()
         provider_runtime_options = to_provider_runtime_options(runtime_options)
-        response_model = runtime_options.model if runtime_options and runtime_options.model else self.chat_provider.model
+        response_model = get_response_model(runtime_options, self.chat_provider.model)
 
         try:
             answer = await self.chat_provider.generate(
@@ -120,6 +134,12 @@ class RagService:
                 answer=None,
                 error=str(exc),
             )
+
+
+def get_response_model(runtime_options: RuntimeOptions | None, default_model: str) -> str:
+    if runtime_options and runtime_options.model:
+        return runtime_options.model
+    return default_model
 
 
 def to_provider_runtime_options(runtime_options: RuntimeOptions | None) -> ChatRuntimeOptions | None:
