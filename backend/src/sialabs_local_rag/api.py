@@ -44,11 +44,15 @@ def get_rag_service(request: Request) -> RagService:
 
 
 def get_llm_model(settings: Settings) -> str:
-    return settings.ollama_chat_model if settings.llm_provider == "ollama" else "deterministic-local-mock"
+    if settings.llm_provider == "ollama":
+        return settings.ollama_chat_model
+    return "deterministic-local-mock"
 
 
 def get_embedding_model(settings: Settings) -> str:
-    return settings.ollama_embed_model if settings.embedding_provider == "ollama" else "hash-bow-128"
+    if settings.embedding_provider == "ollama":
+        return settings.ollama_embed_model
+    return "hash-bow-128"
 
 
 def get_runtime_profiles(settings: Settings) -> dict[str, RuntimeOptions]:
