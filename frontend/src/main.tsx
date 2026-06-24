@@ -2,8 +2,11 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 
 import App from './App'
+import { registerServiceWorker } from './pwa'
 import './styles.css'
 import './workspace.css'
+
+registerServiceWorker()
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
