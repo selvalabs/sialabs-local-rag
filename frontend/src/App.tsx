@@ -60,12 +60,12 @@ const copy = {
     uploadLocal: 'Local upload',
     addFile: 'Add file',
     addFileHelp: 'Choose a file or drag one anywhere into the app window.',
-    chooseLocalFile: 'Choose local file',
-    fileReady: (kb: number) => `${kb} KB ready to index`,
+    chooseLocalFile: 'Choose file',
+    fileReady: (kb: number) => `${kb} KB ready to add`,
     fileHint: 'TXT, Markdown or selectable-text PDF.',
     dropFile: 'Drop file to add it',
     pdfBoundary: 'Scanned PDFs/OCR are out of scope. Content stays in the local base.',
-    addFileToBase: 'Add file to base',
+    addFileToBase: 'Add file',
     localBase: 'Local base',
     indexedDocs: 'Indexed documents',
     documents: 'Documents',
@@ -130,8 +130,8 @@ const copy = {
     uploadLocal: 'Upload local',
     addFile: 'Adicionar arquivo',
     addFileHelp: 'Escolha um arquivo ou arraste para qualquer lugar da janela.',
-    chooseLocalFile: 'Escolher arquivo local',
-    fileReady: (kb: number) => `${kb} KB prontos para indexar`,
+    chooseLocalFile: 'Escolher arquivo',
+    fileReady: (kb: number) => `${kb} KB prontos para adicionar`,
     fileHint: 'TXT, Markdown ou PDF com texto selecionável.',
     dropFile: 'Solte o arquivo para adicionar',
     pdfBoundary: 'PDFs escaneados/OCR ficam fora do escopo. O conteúdo permanece na base local.',
@@ -543,42 +543,43 @@ function App() {
       {error && <div className="alert">{error}</div>}
 
       <section className="grid two-columns ingest-grid">
-        <section className="card stack action-card">
-          <div>
+        <section className="card action-card">
+          <div className="action-card-copy">
             <p className="eyebrow">{t.quickEntry as string}</p>
             <h2>{t.addText as string}</h2>
             <p className="muted">{t.addTextHelp as string}</p>
           </div>
-          <button onClick={() => setIsPasteModalOpen(true)} type="button">
+          <button className="action-button" onClick={() => setIsPasteModalOpen(true)} type="button">
             {t.pasteDocument as string}
           </button>
         </section>
 
-        <form className="card stack action-card upload-card" onSubmit={handleUploadDocument}>
-          <div>
+        <form className="card action-card upload-card" onSubmit={handleUploadDocument}>
+          <div className="action-card-copy">
             <p className="eyebrow">{t.uploadLocal as string}</p>
             <h2>{t.addFile as string}</h2>
             <p className="muted">{t.addFileHelp as string}</p>
+            {selectedFile && <p className="selected-file-meta">{selectedFile.name}</p>}
           </div>
-          <label className="compact-file-picker">
-            <span>{selectedFile ? selectedFile.name : (t.chooseLocalFile as string)}</span>
-            <small>
-              {selectedFile
-                ? (t.fileReady as (kb: number) => string)(Math.ceil(selectedFile.size / 1024))
-                : (t.fileHint as string)}
-            </small>
-            <input
-              type="file"
-              accept=".txt,.md,.markdown,.pdf"
-              onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
-            />
-          </label>
-          <button disabled={isLoading || !selectedFile}>{t.addFileToBase as string}</button>
+          {selectedFile ? (
+            <button className="action-button" disabled={isLoading} type="submit">
+              {t.addFileToBase as string}
+            </button>
+          ) : (
+            <label className="action-button file-action-button">
+              {t.chooseLocalFile as string}
+              <input
+                type="file"
+                accept=".txt,.md,.markdown,.pdf"
+                onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
+              />
+            </label>
+          )}
         </form>
       </section>
 
       <section className="grid workspace-grid">
-        <details className="card stack base-card toggle-card" open>
+        <details className="card stack base-card toggle-card">
           <summary className="toggle-summary">
             <span>
               <span className="eyebrow">{t.localBase as string}</span>
@@ -610,7 +611,7 @@ function App() {
               </div>
             )}
 
-            <div className="document-list">
+            <div className="document-list document-list-scroll">
               {documents.map((document) => (
                 <article className="document-item" key={document.id}>
                   <div>
