@@ -67,7 +67,10 @@ class RagService:
         runtime_options: RuntimeOptions | None = None,
     ) -> ChatResponse:
         started_at = perf_counter()
-        selected_top_k = top_k or self.settings.retrieval_top_k
+        selected_top_k = top_k or get_top_k_for_runtime(
+            runtime_options,
+            default_top_k=self.settings.retrieval_top_k,
+        )
         query_embedding = (await self.embedding_provider.embed([question]))[0]
         sources = self.storage.search_chunks(query_embedding=query_embedding, top_k=selected_top_k)
         provider_runtime_options = to_provider_runtime_options(runtime_options)
@@ -140,6 +143,18 @@ def get_response_model(runtime_options: RuntimeOptions | None, default_model: st
     if runtime_options and runtime_options.model:
         return runtime_options.model
     return default_model
+
+
+def get_top_k_for_runtime(runtime_options: RuntimeOptions | None, default_top_k: int) -> int:
+    if runtime_options is None:
+        return default_top_k
+    if runtime_options.profile == "economy":
+        return 2
+    if runtime_options.profile == "balanced":
+        return 3
+    if runtime_options.profile == "strong":
+        return 5
+    return default_top_k
 
 
 def to_provider_runtime_options(runtime_options: RuntimeOptions | None) -> ChatRuntimeOptions | None:
