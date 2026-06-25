@@ -23,10 +23,7 @@ BACKEND_DIR = Path(os.environ.get("SIALABS_BACKEND_DIR", REPO_ROOT / "backend"))
 BACKEND_URL = os.environ.get("SIALABS_BACKEND_URL", "http://127.0.0.1:8000")
 OLLAMA_URL = os.environ.get("SIALABS_OLLAMA_URL", "http://127.0.0.1:11434")
 
-DEFAULT_BACKEND_COMMAND = [
-    "uv",
-    "run",
-    "python",
+DEFAULT_BACKEND_ARGS = [
     "-m",
     "uvicorn",
     "sialabs_local_rag.main:app",
@@ -95,11 +92,27 @@ def check_http(url: str, timeout: float = 1.5) -> dict[str, Any]:
         }
 
 
+def backend_python_path() -> Path | None:
+    candidates = [
+        BACKEND_DIR / ".venv" / "Scripts" / "python.exe",
+        BACKEND_DIR / ".venv" / "bin" / "python",
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return None
+
+
 def backend_command() -> list[str]:
     configured_command = os.environ.get("SIALABS_BACKEND_COMMAND")
     if configured_command:
         return shlex.split(configured_command, posix=os.name != "nt")
-    return DEFAULT_BACKEND_COMMAND
+
+    backend_python = backend_python_path()
+    if backend_python:
+        return [str(backend_python), *DEFAULT_BACKEND_ARGS]
+
+    return ["uv", "run", "python", *DEFAULT_BACKEND_ARGS]
 
 
 def backend_env() -> dict[str, str]:
@@ -127,11 +140,25 @@ def process_is_running(process: subprocess.Popen[str] | None) -> bool:
     return process is not None and process.poll() is None
 
 
+def backend_is_reachable() -> bool:
+    return bool(check_http(f"{BACKEND_URL}/api/config", timeout=0.5)["online"])
+
+
+def wait_until_backend_offline(timeout_seconds: float = 8.0) -> bool:
+    deadline = time.perf_counter() + timeout_seconds
+    while time.perf_counter() < deadline:
+        if not backend_is_reachable():
+            return True
+        time.sleep(0.35)
+    return False
+
+
 def managed_backend_status() -> dict[str, Any]:
     with backend_lock:
         running = process_is_running(backend_process)
         return {
-            "managed": backend_process is not None,
+            "managed": running,
+            "stale_process": backend_process is not None and not running,
             "running": running,
             "pid": backend_process.pid if running and backend_process else None,
             "return_code": backend_process.poll() if backend_process else None,
@@ -144,8 +171,10 @@ def start_backend() -> dict[str, Any]:
         if process_is_running(backend_process):
             return {"started": False, "reason": "managed backend already running"}
 
-        backend_status = check_http(f"{BACKEND_URL}/api/config")
-        if backend_status["online"]:
+        if backend_process is not None and backend_process.poll() is not None:
+            backend_process = None
+
+        if backend_is_reachable():
             return {"started": False, "reason": "backend already reachable", "managed": False}
 
         command = backend_command()
@@ -176,21 +205,36 @@ def stop_backend() -> dict[str, Any]:
     global backend_process
     with backend_lock:
         if not process_is_running(backend_process):
+            if backend_process is not None and backend_process.poll() is not None:
+                backend_process = None
             return {"stopped": False, "reason": "no managed backend running"}
 
         assert backend_process is not None
-        pid = backend_process.pid
-        backend_process.terminate()
+        process = backend_process
+        pid = process.pid
+        process.terminate()
         try:
-            backend_process.wait(timeout=8)
+            process.wait(timeout=8)
         except subprocess.TimeoutExpired:
-            backend_process.kill()
-            backend_process.wait(timeout=5)
-        return {"stopped": True, "pid": pid, "return_code": backend_process.returncode}
+            process.kill()
+            process.wait(timeout=5)
+        return_code = process.returncode
+        backend_process = None
+
+    stopped = wait_until_backend_offline()
+    return {"stopped": stopped, "pid": pid, "return_code": return_code}
 
 
 def restart_backend() -> dict[str, Any]:
     stop_result = stop_backend()
+    if stop_result.get("stopped") is False and backend_is_reachable():
+        return {
+            "stop": stop_result,
+            "start": {
+                "started": False,
+                "reason": "backend is still reachable after stop",
+            },
+        }
     start_result = start_backend()
     return {"stop": stop_result, "start": start_result}
 
