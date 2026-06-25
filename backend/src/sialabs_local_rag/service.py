@@ -19,6 +19,12 @@ from sialabs_local_rag.schemas import (
 from sialabs_local_rag.settings import Settings
 from sialabs_local_rag.storage import ChunkInput, Storage
 
+_PROFILE_TOP_K = {
+    "economy": 2,
+    "balanced": 3,
+    "strong": 5,
+}
+
 
 class EmptyDocumentError(ValueError):
     """Raised when text cannot produce valid chunks."""
@@ -146,15 +152,9 @@ def get_response_model(runtime_options: RuntimeOptions | None, default_model: st
 
 
 def get_top_k_for_runtime(runtime_options: RuntimeOptions | None, default_top_k: int) -> int:
-    if runtime_options is None:
+    if runtime_options is None or runtime_options.profile is None:
         return default_top_k
-    if runtime_options.profile == "economy":
-        return 2
-    if runtime_options.profile == "balanced":
-        return 3
-    if runtime_options.profile == "strong":
-        return 5
-    return default_top_k
+    return _PROFILE_TOP_K.get(runtime_options.profile, default_top_k)
 
 
 def to_provider_runtime_options(runtime_options: RuntimeOptions | None) -> ChatRuntimeOptions | None:
