@@ -157,7 +157,9 @@ def get_top_k_for_runtime(runtime_options: RuntimeOptions | None, default_top_k:
     return _PROFILE_TOP_K.get(runtime_options.profile, default_top_k)
 
 
-def to_provider_runtime_options(runtime_options: RuntimeOptions | None) -> ChatRuntimeOptions | None:
+def to_provider_runtime_options(
+    runtime_options: RuntimeOptions | None,
+) -> ChatRuntimeOptions | None:
     if runtime_options is None:
         return None
     return ChatRuntimeOptions(

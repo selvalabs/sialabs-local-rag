@@ -99,7 +99,9 @@ def get_public_config(settings: Annotated[Settings, Depends(get_settings)]) -> P
 
 
 @api_router.get("/runtime", response_model=RuntimeConfigResponse)
-def get_runtime_config(settings: Annotated[Settings, Depends(get_settings)]) -> RuntimeConfigResponse:
+def get_runtime_config(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> RuntimeConfigResponse:
     return RuntimeConfigResponse(
         llm_provider=settings.llm_provider,
         llm_model=get_llm_model(settings),
@@ -122,7 +124,9 @@ async def test_runtime(
     payload: RuntimeTestRequest,
     service: Annotated[RagService, Depends(get_rag_service)],
 ) -> RuntimeTestResponse:
-    return await service.test_runtime(prompt=payload.prompt, runtime_options=payload.runtime_options)
+    return await service.test_runtime(
+        prompt=payload.prompt, runtime_options=payload.runtime_options
+    )
 
 
 @api_router.post(
