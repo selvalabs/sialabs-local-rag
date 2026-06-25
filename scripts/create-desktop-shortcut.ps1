@@ -17,10 +17,11 @@ if (-not (Test-Path $StartupScript)) {
 $Shell = New-Object -ComObject WScript.Shell
 $Shortcut = $Shell.CreateShortcut($ShortcutPath)
 $Shortcut.TargetPath = $PowerShellPath
-$Shortcut.Arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$StartupScript`""
+$Shortcut.Arguments = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$StartupScript`""
 $Shortcut.WorkingDirectory = $RepoRoot
 $Shortcut.IconLocation = "$PowerShellPath,0"
 $Shortcut.Description = "Start SIALabs Local RAG"
+$Shortcut.WindowStyle = 7
 $Shortcut.Save()
 
 Write-Host "Shortcut created: $ShortcutPath"
