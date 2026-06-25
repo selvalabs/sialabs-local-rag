@@ -1,4 +1,12 @@
-import type { ChatResponse, DocumentListResponse, DocumentRecord, PublicConfig } from './types'
+import type {
+  ChatResponse,
+  DocumentListResponse,
+  DocumentRecord,
+  PublicConfig,
+  RuntimeConfig,
+  RuntimeOptions,
+  RuntimeTestResponse,
+} from './types'
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
@@ -34,6 +42,23 @@ async function parseJsonResponse<T>(response: Response): Promise<T> {
 export async function getConfig(): Promise<PublicConfig> {
   const response = await fetchApi(`${API_URL}/api/config`)
   return parseJsonResponse<PublicConfig>(response)
+}
+
+export async function getRuntimeConfig(): Promise<RuntimeConfig> {
+  const response = await fetchApi(`${API_URL}/api/runtime`)
+  return parseJsonResponse<RuntimeConfig>(response)
+}
+
+export async function testRuntime(runtimeOptions: RuntimeOptions): Promise<RuntimeTestResponse> {
+  const response = await fetchApi(`${API_URL}/api/runtime/test`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      prompt: 'Responda apenas: ok',
+      runtime_options: runtimeOptions,
+    }),
+  })
+  return parseJsonResponse<RuntimeTestResponse>(response)
 }
 
 export async function listDocuments(): Promise<DocumentRecord[]> {
@@ -81,11 +106,15 @@ export async function deleteDocument(documentId: string): Promise<void> {
   }
 }
 
-export async function askQuestion(question: string): Promise<ChatResponse> {
+export async function askQuestion(
+  question: string,
+  runtimeOptions?: RuntimeOptions,
+  topK?: number,
+): Promise<ChatResponse> {
   const response = await fetchApi(`${API_URL}/api/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ question }),
+    body: JSON.stringify({ question, runtime_options: runtimeOptions, top_k: topK }),
   })
   return parseJsonResponse<ChatResponse>(response)
 }

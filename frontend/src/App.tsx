@@ -6,10 +6,20 @@ import {
   createDocument,
   deleteDocument,
   getConfig,
+  getRuntimeConfig,
   listDocuments,
+  testRuntime,
   uploadDocument,
 } from './api'
-import type { ChatResponse, DocumentRecord, PublicConfig } from './types'
+import type {
+  ChatResponse,
+  DocumentRecord,
+  PublicConfig,
+  RuntimeConfig,
+  RuntimeOptions,
+  RuntimeProfileName,
+  RuntimeTestResponse,
+} from './types'
 
 type Language = 'en' | 'pt'
 type Theme = 'light' | 'dark'
@@ -29,6 +39,41 @@ The mock/hash mode validates the full flow on machines without a GPU or local mo
   pt: `SoberanIA Labs Local RAG é uma aplicação local-first para conversar com documentos privados.
 O projeto demonstra React, TypeScript, FastAPI, SQLite, Docker, CI e integração opcional com Ollama.
 O modo mock/hash permite validar o fluxo em ambientes sem GPU ou modelo local.`,
+}
+
+const fallbackRuntimeProfiles: Record<RuntimeProfileName, RuntimeOptions> = {
+  economy: {
+    profile: 'economy',
+    model: 'gemma4:e2b',
+    num_ctx: 1024,
+    num_gpu: 0,
+    keep_alive: '1m',
+    temperature: 0.2,
+  },
+  balanced: {
+    profile: 'balanced',
+    model: 'gemma4:e2b',
+    num_ctx: 1024,
+    num_gpu: null,
+    keep_alive: '5m',
+    temperature: 0.2,
+  },
+  strong: {
+    profile: 'strong',
+    model: 'gemma4:e2b',
+    num_ctx: 4096,
+    num_gpu: null,
+    keep_alive: '5m',
+    temperature: 0.2,
+  },
+  custom: {
+    profile: 'custom',
+    model: 'gemma4:e2b',
+    num_ctx: 1024,
+    num_gpu: null,
+    keep_alive: '5m',
+    temperature: 0.2,
+  },
 }
 
 const copy = {
@@ -88,6 +133,24 @@ const copy = {
     sources: 'Retrieved sources',
     sourceSingular: 'source',
     sourcePlural: 'sources',
+    runtimeSettings: 'AI runtime settings',
+    runtimeSettingsText: 'Choose how much local memory and GPU the Ollama model may use.',
+    runtimeProfile: 'Runtime profile',
+    economyProfile: 'Economy',
+    balancedProfile: 'Balanced',
+    strongProfile: 'Strong',
+    customProfile: 'Custom',
+    model: 'Model',
+    contextWindow: 'Context tokens',
+    gpuLayers: 'GPU layers',
+    gpuAuto: 'auto',
+    keepAlive: 'Keep alive',
+    temperature: 'Temperature',
+    testRuntime: 'Test local AI',
+    testingRuntime: 'Testing…',
+    runtimeSuccess: 'Runtime test passed',
+    runtimeFailure: 'Runtime test failed',
+    runtimeUnavailable: 'Runtime settings unavailable until the API is reachable.',
     techStatus: 'Local technical status',
     llm: 'LLM',
     embeddings: 'Embeddings',
@@ -101,6 +164,7 @@ const copy = {
     chatError: 'Failed to chat with the local base.',
     deleteError: 'Failed to remove document from the base.',
     apiError: 'Failed to connect to the API.',
+    runtimeError: 'Failed to test the local AI runtime.',
   },
   pt: {
     connecting: 'conectando',
@@ -158,6 +222,24 @@ const copy = {
     sources: 'Fontes recuperadas',
     sourceSingular: 'fonte',
     sourcePlural: 'fontes',
+    runtimeSettings: 'Configuração da IA local',
+    runtimeSettingsText: 'Escolha quanta memória local e GPU o modelo do Ollama pode usar.',
+    runtimeProfile: 'Perfil de uso',
+    economyProfile: 'Econômico',
+    balancedProfile: 'Equilibrado',
+    strongProfile: 'Forte',
+    customProfile: 'Personalizado',
+    model: 'Modelo',
+    contextWindow: 'Tokens de contexto',
+    gpuLayers: 'Camadas GPU',
+    gpuAuto: 'auto',
+    keepAlive: 'Manter carregado',
+    temperature: 'Temperatura',
+    testRuntime: 'Testar IA local',
+    testingRuntime: 'Testando…',
+    runtimeSuccess: 'Teste da IA aprovado',
+    runtimeFailure: 'Teste da IA falhou',
+    runtimeUnavailable: 'Configuração indisponível até a API responder.',
     techStatus: 'Status técnico local',
     llm: 'LLM',
     embeddings: 'Embeddings',
@@ -167,15 +249,22 @@ const copy = {
     defaultTitle: 'Documento de demonstração',
     defaultQuestion: 'Como este projeto permite conversar com documentos privados localmente?',
     createError: 'Falha ao adicionar texto à base.',
-    uploadError: 'Falha ao adicionar arquivo à base.',
+    uploadError: 'Falha ao adicionar arquivo.',
     chatError: 'Falha ao conversar com a base local.',
-    deleteError: 'Falha ao remover documento da base.',
+    deleteError: 'Falha ao remover documento.',
     apiError: 'Falha ao conectar na API.',
+    runtimeError: 'Falha ao testar o runtime local de IA.',
   },
 } satisfies Record<Language, Record<string, unknown>>
 
 function createMessageId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
+
+function parseOptionalNumber(value: string) {
+  if (!value.trim()) return null
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : null
 }
 
 function isChatMessage(value: unknown): value is ChatMessage {
@@ -251,6 +340,10 @@ function App() {
   const [language, setLanguage] = useState<Language>('en')
   const [theme, setTheme] = useState<Theme>('light')
   const [config, setConfig] = useState<PublicConfig | null>(null)
+  const [runtimeConfig, setRuntimeConfig] = useState<RuntimeConfig | null>(null)
+  const [runtimeProfile, setRuntimeProfile] = useState<RuntimeProfileName>('balanced')
+  const [runtimeOptions, setRuntimeOptions] = useState<RuntimeOptions>(fallbackRuntimeProfiles.balanced)
+  const [runtimeTestResult, setRuntimeTestResult] = useState<RuntimeTestResponse | null>(null)
   const [documents, setDocuments] = useState<DocumentRecord[]>([])
   const [title, setTitle] = useState(copy.en.defaultTitle as string)
   const [content, setContent] = useState(sampleDocuments.en)
@@ -260,6 +353,7 @@ function App() {
   const [isPasteModalOpen, setIsPasteModalOpen] = useState(false)
   const [isDraggingFile, setIsDraggingFile] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [isTestingRuntime, setIsTestingRuntime] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const t = copy[language]
@@ -362,8 +456,11 @@ function App() {
   useEffect(() => {
     async function boot() {
       try {
-        const [publicConfig] = await Promise.all([getConfig()])
+        const [publicConfig, localRuntimeConfig] = await Promise.all([getConfig(), getRuntimeConfig()])
         setConfig(publicConfig)
+        setRuntimeConfig(localRuntimeConfig)
+        setRuntimeOptions(localRuntimeConfig.default_options)
+        setRuntimeProfile((localRuntimeConfig.default_options.profile as RuntimeProfileName) ?? 'balanced')
         await refreshDocuments()
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : (t.apiError as string))
@@ -388,6 +485,20 @@ function App() {
     ) {
       setQuestion(copy[nextLanguage].defaultQuestion as string)
     }
+  }
+
+  function applyRuntimeProfile(profile: RuntimeProfileName) {
+    const configuredProfile = runtimeConfig?.profiles?.[profile]
+    const fallbackProfile = fallbackRuntimeProfiles[profile]
+    setRuntimeProfile(profile)
+    setRuntimeOptions({ ...(configuredProfile ?? fallbackProfile), profile })
+    setRuntimeTestResult(null)
+  }
+
+  function updateRuntimeOption<Key extends keyof RuntimeOptions>(key: Key, value: RuntimeOptions[Key]) {
+    setRuntimeProfile('custom')
+    setRuntimeOptions((currentOptions) => ({ ...currentOptions, profile: 'custom', [key]: value }))
+    setRuntimeTestResult(null)
   }
 
   async function handleCreateDocument(event: FormEvent<HTMLFormElement>) {
@@ -422,6 +533,21 @@ function App() {
     }
   }
 
+  async function handleRuntimeTest() {
+    setIsTestingRuntime(true)
+    setError(null)
+    setRuntimeTestResult(null)
+    try {
+      const result = await testRuntime(runtimeOptions)
+      setRuntimeTestResult(result)
+      if (!result.success && result.error) setError(result.error)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : (t.runtimeError as string))
+    } finally {
+      setIsTestingRuntime(false)
+    }
+  }
+
   async function submitQuestion() {
     const submittedQuestion = question.trim()
     if (submittedQuestion.length < 3 || isLoading || !hasDocuments) return
@@ -440,6 +566,7 @@ function App() {
     try {
       const response = await askQuestion(
         buildContextualQuestion(priorMessages, submittedQuestion, language),
+        runtimeOptions,
       )
       const assistantMessage: ChatMessage = {
         id: createMessageId(),
@@ -719,6 +846,113 @@ function App() {
         </section>
       </section>
 
+      <section className="card stack runtime-card">
+        <div className="chat-heading">
+          <div>
+            <p className="eyebrow">{t.runtimeSettings as string}</p>
+            <h2>{t.runtimeProfile as string}</h2>
+            <p className="muted">{t.runtimeSettingsText as string}</p>
+          </div>
+          <button disabled={isTestingRuntime || !runtimeConfig} onClick={() => void handleRuntimeTest()} type="button">
+            {isTestingRuntime ? (t.testingRuntime as string) : (t.testRuntime as string)}
+          </button>
+        </div>
+
+        {runtimeConfig ? (
+          <>
+            <div className="runtime-profiles" role="group" aria-label={t.runtimeProfile as string}>
+              {(['economy', 'balanced', 'strong', 'custom'] as RuntimeProfileName[]).map((profile) => (
+                <button
+                  className={runtimeProfile === profile ? 'runtime-profile active' : 'runtime-profile'}
+                  key={profile}
+                  onClick={() => applyRuntimeProfile(profile)}
+                  type="button"
+                >
+                  {profile === 'economy' && (t.economyProfile as string)}
+                  {profile === 'balanced' && (t.balancedProfile as string)}
+                  {profile === 'strong' && (t.strongProfile as string)}
+                  {profile === 'custom' && (t.customProfile as string)}
+                </button>
+              ))}
+            </div>
+
+            <div className="runtime-grid">
+              <label>
+                {t.model as string}
+                <input
+                  value={runtimeOptions.model ?? ''}
+                  onChange={(event) => updateRuntimeOption('model', event.target.value)}
+                />
+              </label>
+              <label>
+                {t.contextWindow as string}
+                <input
+                  min={512}
+                  step={512}
+                  type="number"
+                  value={runtimeOptions.num_ctx ?? ''}
+                  onChange={(event) => updateRuntimeOption('num_ctx', parseOptionalNumber(event.target.value))}
+                />
+              </label>
+              <label>
+                {t.gpuLayers as string}
+                <input
+                  min={0}
+                  placeholder={t.gpuAuto as string}
+                  type="number"
+                  value={runtimeOptions.num_gpu ?? ''}
+                  onChange={(event) => updateRuntimeOption('num_gpu', parseOptionalNumber(event.target.value))}
+                />
+              </label>
+              <label>
+                {t.keepAlive as string}
+                <input
+                  value={runtimeOptions.keep_alive ?? ''}
+                  onChange={(event) => updateRuntimeOption('keep_alive', event.target.value || null)}
+                />
+              </label>
+              <label>
+                {t.temperature as string}
+                <input
+                  max={2}
+                  min={0}
+                  step={0.1}
+                  type="number"
+                  value={runtimeOptions.temperature ?? ''}
+                  onChange={(event) =>
+                    updateRuntimeOption('temperature', parseOptionalNumber(event.target.value))
+                  }
+                />
+              </label>
+            </div>
+
+            <div className="runtime-summary">
+              <span>{runtimeOptions.model || runtimeConfig.llm_model}</span>
+              <span>ctx {runtimeOptions.num_ctx ?? (t.gpuAuto as string)}</span>
+              <span>gpu {runtimeOptions.num_gpu ?? (t.gpuAuto as string)}</span>
+              <span>{runtimeOptions.keep_alive || 'keep_alive auto'}</span>
+            </div>
+
+            {runtimeTestResult && (
+              <div className={runtimeTestResult.success ? 'runtime-result success' : 'runtime-result failure'}>
+                <strong>
+                  {runtimeTestResult.success
+                    ? (t.runtimeSuccess as string)
+                    : (t.runtimeFailure as string)}
+                </strong>
+                <p>
+                  {runtimeTestResult.model} · {runtimeTestResult.latency_ms} ms
+                </p>
+                {runtimeTestResult.answer && <p>{runtimeTestResult.answer}</p>}
+                {runtimeTestResult.error && <p>{runtimeTestResult.error}</p>}
+              </div>
+            )}
+          </>
+        ) : (
+          <p className="muted">{t.runtimeUnavailable as string}</p>
+        )}
+      </section>
+
       <section className="card config-card">
         <p className="eyebrow">{t.techStatus as string}</p>
         {config ? (
@@ -726,7 +960,7 @@ function App() {
             <div>
               <dt>{t.llm as string}</dt>
               <dd>
-                {config.llm_provider} · {config.llm_model}
+                {config.llm_provider} · {runtimeOptions.model || config.llm_model}
               </dd>
             </div>
             <div>

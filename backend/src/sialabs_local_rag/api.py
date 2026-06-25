@@ -17,6 +17,10 @@ from sialabs_local_rag.schemas import (
     DocumentListResponse,
     DocumentResponse,
     PublicConfigResponse,
+    RuntimeConfigResponse,
+    RuntimeOptions,
+    RuntimeTestRequest,
+    RuntimeTestResponse,
 )
 from sialabs_local_rag.service import EmptyDocumentError, RagService
 from sialabs_local_rag.settings import Settings
@@ -39,29 +43,89 @@ def get_rag_service(request: Request) -> RagService:
     return cast(RagService, request.app.state.rag_service)
 
 
+def get_llm_model(settings: Settings) -> str:
+    if settings.llm_provider == "ollama":
+        return settings.ollama_chat_model
+    return "deterministic-local-mock"
+
+
+def get_embedding_model(settings: Settings) -> str:
+    if settings.embedding_provider == "ollama":
+        return settings.ollama_embed_model
+    return "hash-bow-128"
+
+
+def get_runtime_profiles(settings: Settings) -> dict[str, RuntimeOptions]:
+    return {
+        "economy": RuntimeOptions(
+            profile="economy",
+            model=settings.ollama_chat_model,
+            num_ctx=1024,
+            num_gpu=0,
+            keep_alive="1m",
+            temperature=settings.ollama_temperature,
+        ),
+        "balanced": RuntimeOptions(
+            profile="balanced",
+            model=settings.ollama_chat_model,
+            num_ctx=settings.ollama_num_ctx or 2048,
+            num_gpu=settings.ollama_num_gpu,
+            keep_alive=settings.ollama_keep_alive,
+            temperature=settings.ollama_temperature,
+        ),
+        "strong": RuntimeOptions(
+            profile="strong",
+            model=settings.ollama_chat_model,
+            num_ctx=4096,
+            num_gpu=settings.ollama_num_gpu,
+            keep_alive=settings.ollama_keep_alive,
+            temperature=settings.ollama_temperature,
+        ),
+    }
+
+
 @api_router.get("/config", response_model=PublicConfigResponse)
 def get_public_config(settings: Annotated[Settings, Depends(get_settings)]) -> PublicConfigResponse:
-    chat_provider = settings.llm_provider
-    embedding_provider = settings.embedding_provider
-    llm_model = (
-        settings.ollama_chat_model
-        if chat_provider == "ollama"
-        else "deterministic-local-mock"
-    )
-    embedding_model = (
-        settings.ollama_embed_model
-        if embedding_provider == "ollama"
-        else "hash-bow-128"
-    )
     return PublicConfigResponse(
         app_name=settings.app_name,
-        llm_provider=chat_provider,
-        llm_model=llm_model,
-        embedding_provider=embedding_provider,
-        embedding_model=embedding_model,
+        llm_provider=settings.llm_provider,
+        llm_model=get_llm_model(settings),
+        embedding_provider=settings.embedding_provider,
+        embedding_model=get_embedding_model(settings),
         retrieval_top_k=settings.retrieval_top_k,
         chunk_size=settings.chunk_size,
         chunk_overlap=settings.chunk_overlap,
+    )
+
+
+@api_router.get("/runtime", response_model=RuntimeConfigResponse)
+def get_runtime_config(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> RuntimeConfigResponse:
+    return RuntimeConfigResponse(
+        llm_provider=settings.llm_provider,
+        llm_model=get_llm_model(settings),
+        embedding_provider=settings.embedding_provider,
+        embedding_model=get_embedding_model(settings),
+        default_options=RuntimeOptions(
+            profile="balanced",
+            model=settings.ollama_chat_model,
+            num_ctx=settings.ollama_num_ctx,
+            num_gpu=settings.ollama_num_gpu,
+            keep_alive=settings.ollama_keep_alive,
+            temperature=settings.ollama_temperature,
+        ),
+        profiles=get_runtime_profiles(settings),
+    )
+
+
+@api_router.post("/runtime/test", response_model=RuntimeTestResponse)
+async def test_runtime(
+    payload: RuntimeTestRequest,
+    service: Annotated[RagService, Depends(get_rag_service)],
+) -> RuntimeTestResponse:
+    return await service.test_runtime(
+        prompt=payload.prompt, runtime_options=payload.runtime_options
     )
 
 
@@ -164,7 +228,11 @@ async def chat(
     service: Annotated[RagService, Depends(get_rag_service)],
 ) -> ChatResponse:
     try:
-        return await service.answer_question(question=payload.question, top_k=payload.top_k)
+        return await service.answer_question(
+            question=payload.question,
+            top_k=payload.top_k,
+            runtime_options=payload.runtime_options,
+        )
     except ProviderError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

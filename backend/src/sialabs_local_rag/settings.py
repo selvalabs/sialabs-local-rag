@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     ollama_chat_model: str = "gemma4:e2b"
     ollama_embed_model: str = "embeddinggemma"
     ollama_request_timeout_seconds: float = Field(default=120.0, gt=0)
+    ollama_temperature: float = Field(default=0.2, ge=0, le=2)
+    ollama_num_ctx: int | None = Field(default=1024, ge=512, le=32768)
+    ollama_num_gpu: int | None = Field(default=None, ge=0, le=256)
+    ollama_keep_alive: str | None = "5m"
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -37,4 +41,3 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
-

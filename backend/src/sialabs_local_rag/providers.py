@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import re
 from collections.abc import Sequence
+from dataclasses import dataclass
 from typing import Protocol
 
 import httpx
@@ -17,6 +18,15 @@ class ProviderError(RuntimeError):
     """Raised when an external AI provider cannot complete a request."""
 
 
+@dataclass(frozen=True)
+class ChatRuntimeOptions:
+    model: str | None = None
+    num_ctx: int | None = None
+    num_gpu: int | None = None
+    keep_alive: str | None = None
+    temperature: float | None = None
+
+
 class EmbeddingProvider(Protocol):
     name: str
     model: str
@@ -29,7 +39,12 @@ class ChatProvider(Protocol):
     name: str
     model: str
 
-    async def generate(self, system_prompt: str, user_prompt: str) -> str:
+    async def generate(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        runtime_options: ChatRuntimeOptions | None = None,
+    ) -> str:
         """Generate an answer from prompts."""
 
 
@@ -100,8 +115,13 @@ class MockChatProvider:
     name = "mock"
     model = "deterministic-local-mock"
 
-    async def generate(self, system_prompt: str, user_prompt: str) -> str:
-        del system_prompt
+    async def generate(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        runtime_options: ChatRuntimeOptions | None = None,
+    ) -> str:
+        del system_prompt, runtime_options
         context_lines = [line for line in user_prompt.splitlines() if line.startswith("Fonte")]
         source_count = len(context_lines)
         return (
@@ -114,21 +134,70 @@ class MockChatProvider:
 class OllamaChatProvider:
     name = "ollama"
 
-    def __init__(self, base_url: str, model: str, timeout_seconds: float) -> None:
+    def __init__(
+        self,
+        base_url: str,
+        model: str,
+        timeout_seconds: float,
+        temperature: float,
+        num_ctx: int | None,
+        num_gpu: int | None,
+        keep_alive: str | None,
+    ) -> None:
         self.base_url = base_url.rstrip("/")
         self.model = model
         self.timeout_seconds = timeout_seconds
+        self.temperature = temperature
+        self.num_ctx = num_ctx
+        self.num_gpu = num_gpu
+        self.keep_alive = keep_alive
 
-    async def generate(self, system_prompt: str, user_prompt: str) -> str:
-        payload = {
-            "model": self.model,
+    async def generate(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        runtime_options: ChatRuntimeOptions | None = None,
+    ) -> str:
+        model = runtime_options.model if runtime_options and runtime_options.model else self.model
+        temperature = (
+            runtime_options.temperature
+            if runtime_options and runtime_options.temperature is not None
+            else self.temperature
+        )
+        num_ctx = (
+            runtime_options.num_ctx
+            if runtime_options and runtime_options.num_ctx is not None
+            else self.num_ctx
+        )
+        num_gpu = (
+            runtime_options.num_gpu
+            if runtime_options and runtime_options.num_gpu is not None
+            else self.num_gpu
+        )
+        keep_alive = (
+            runtime_options.keep_alive
+            if runtime_options and runtime_options.keep_alive is not None
+            else self.keep_alive
+        )
+
+        options: dict[str, float | int] = {"temperature": temperature}
+        if num_ctx is not None:
+            options["num_ctx"] = num_ctx
+        if num_gpu is not None:
+            options["num_gpu"] = num_gpu
+
+        payload: dict[str, object] = {
+            "model": model,
             "stream": False,
             "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
-            "options": {"temperature": 0.2},
+            "options": options,
         }
+        if keep_alive:
+            payload["keep_alive"] = keep_alive
+
         try:
             async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
                 response = await client.post(f"{self.base_url}/api/chat", json=payload)
@@ -165,4 +234,8 @@ def create_chat_provider(settings: Settings) -> ChatProvider:
         base_url=settings.ollama_base_url,
         model=settings.ollama_chat_model,
         timeout_seconds=settings.ollama_request_timeout_seconds,
+        temperature=settings.ollama_temperature,
+        num_ctx=settings.ollama_num_ctx,
+        num_gpu=settings.ollama_num_gpu,
+        keep_alive=settings.ollama_keep_alive,
     )
