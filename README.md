@@ -24,6 +24,7 @@ This repository is a reference implementation for local and small-dataset use. I
 - Show source chunks, similarity scores, model metadata and latency.
 - List and delete indexed documents.
 - Install the frontend as a local PWA app shell on supported browsers.
+- Prepare a Windows one-click local startup flow with desktop shortcut creation.
 - Validate the application without local model downloads through deterministic test providers.
 
 ## RAG flow
@@ -51,6 +52,7 @@ Document or file upload
 | Gemma 4 local runtime | Validated with `gemma4:e2b` |
 | Local embedding runtime | Validated with `embeddinggemma` |
 | Full local Ollama RAG flow | Validated with `gemma3:4b` and `gemma4:e2b` using `embeddinggemma` |
+| Windows one-click startup flow | Validated locally with desktop shortcut and app opening at `http://127.0.0.1:4182` |
 
 See [`docs/VALIDATION.md`](docs/VALIDATION.md) for scope and limitations.
 
@@ -69,6 +71,57 @@ See [`docs/VALIDATION.md`](docs/VALIDATION.md) for scope and limitations.
 ## Quick start
 
 Prerequisites and additional options are documented in [`docs/LOCAL_SETUP.md`](docs/LOCAL_SETUP.md).
+
+### Windows setup from a fresh clone
+
+This is the easiest path for Windows users who want to try the local app without manually starting backend and frontend in separate terminals.
+
+Install these external dependencies first:
+
+- Git
+- Python 3.12+
+- uv
+- Node.js/npm
+- Ollama
+
+Then clone the repository and enter the project folder:
+
+~~~powershell
+cd $HOME\dev
+git clone https://github.com/selvalabs/sialabs-local-rag.git
+cd sialabs-local-rag
+~~~
+
+Pull the local AI models used by the default Windows flow:
+
+~~~powershell
+ollama pull gemma4:e2b
+ollama pull embeddinggemma
+~~~
+
+Prepare the local Windows app flow:
+
+~~~powershell
+.\scripts\install-windows-app.ps1
+~~~
+
+This installs/syncs dependencies, builds the frontend and creates a desktop shortcut named `SIALabs Local RAG`.
+
+Start the app with the desktop shortcut or run:
+
+~~~powershell
+.\scripts\start-local-app.ps1
+~~~
+
+The app opens at:
+
+~~~text
+http://127.0.0.1:4182
+~~~
+
+This is not a signed `.exe` installer yet. It is the current local Windows startup flow used as the base for future packaging. See [`installer/windows/README.md`](installer/windows/README.md) for details.
+
+### Manual development setup
 
 Terminal 1 — backend:
 
@@ -134,8 +187,8 @@ This mode validates the application pipeline deterministically. It is not semant
 
 ## Use the app
 
-1. Start the backend and frontend.
-2. Open `http://localhost:5173`.
+1. Start the backend and frontend, or use the Windows shortcut/start script.
+2. Open `http://127.0.0.1:4182` for the Windows one-click flow, or `http://localhost:5173` for the manual dev server.
 3. Create a document from pasted text or upload a supported file.
 4. Wait for indexing to complete.
 5. Ask a question about the indexed content.
@@ -180,6 +233,8 @@ If the backend is stopped, the installed app displays an actionable local API un
 | API contract | [`docs/API.md`](docs/API.md) |
 | Local setup | [`docs/LOCAL_SETUP.md`](docs/LOCAL_SETUP.md) |
 | Local AI configuration | [`docs/LOCAL_AI.md`](docs/LOCAL_AI.md) |
+| Windows one-click startup flow | [`installer/windows/README.md`](installer/windows/README.md) |
+| Installer and release artifact flow | [`docs/INSTALLERS.md`](docs/INSTALLERS.md) |
 | Security and privacy | [`docs/SECURITY_PRIVACY.md`](docs/SECURITY_PRIVACY.md) |
 | Testing strategy | [`docs/TESTING.md`](docs/TESTING.md) |
 | Reproducible demo | [`docs/DEMO.md`](docs/DEMO.md) |
