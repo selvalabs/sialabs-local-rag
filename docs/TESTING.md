@@ -55,6 +55,17 @@ uv run pytest
 uv run mypy src
 ```
 
+Backend with coverage:
+
+```powershell
+cd backend
+uv run --with pytest-cov pytest --cov=sialabs_local_rag --cov-report=term-missing --cov-report=xml
+```
+
+This prints a terminal coverage summary and writes `backend/coverage.xml` for CI artifacts or later integration with coverage reporting services.
+
+No minimum coverage threshold is enforced yet. The current goal is to make coverage visible before deciding a realistic threshold.
+
 Frontend:
 
 ```powershell
@@ -74,6 +85,8 @@ docker compose config
 
 CI uses deterministic mock/hash providers so validation does not depend on local hardware or downloaded model availability. Real Ollama execution is validated separately through explicit local smoke and end-to-end checks.
 
+The backend CI job runs pytest with coverage and uploads `coverage.xml` as a workflow artifact. Coverage is informational for now and does not fail the build by percentage.
+
 ## Local AI validation
 
 ```powershell
@@ -85,6 +98,7 @@ See [`VALIDATION.md`](VALIDATION.md) for the validated model combinations and sc
 ## Current gaps
 
 - No browser-driven end-to-end test suite.
+- No enforced minimum coverage threshold.
 - No retrieval-quality benchmark dataset.
 - No load or sustained-latency benchmark.
 - No automated OCR or scanned-PDF test path because OCR is unsupported.
