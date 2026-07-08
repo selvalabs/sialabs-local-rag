@@ -12,6 +12,14 @@ SoberanIA Labs Local RAG provides a private-by-default workflow for indexing loc
 
 This repository is a reference implementation for local and small-dataset use. It is not presented as a production SaaS.
 
+## Public repository safety
+
+This public repository contains source code, documentation, deterministic demo fixtures and configuration examples only.
+
+It does not include real user documents, local SQLite databases, generated uploads, real `.env` files, API keys, downloaded Ollama model files or local installer artifacts. The launcher, backend and frontend flows are designed for localhost use through `127.0.0.1` or `localhost`.
+
+See [`SECURITY.md`](SECURITY.md) and [`docs/SECURITY_PRIVACY.md`](docs/SECURITY_PRIVACY.md) for the full local-use security boundary.
+
 ## Capabilities
 
 - Create documents from pasted text.
@@ -235,6 +243,7 @@ If the backend is stopped, the installed app displays an actionable local API un
 | Local AI configuration | [`docs/LOCAL_AI.md`](docs/LOCAL_AI.md) |
 | Windows one-click startup flow | [`installer/windows/README.md`](installer/windows/README.md) |
 | Installer and release artifact flow | [`docs/INSTALLERS.md`](docs/INSTALLERS.md) |
+| Security policy | [`SECURITY.md`](SECURITY.md) |
 | Security and privacy | [`docs/SECURITY_PRIVACY.md`](docs/SECURITY_PRIVACY.md) |
 | Testing strategy | [`docs/TESTING.md`](docs/TESTING.md) |
 | Reproducible demo | [`docs/DEMO.md`](docs/DEMO.md) |
