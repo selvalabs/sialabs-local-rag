@@ -13,7 +13,11 @@ class Settings(BaseSettings):
     app_env: str = "development"
     api_prefix: str = "/api"
     database_url: str = "sqlite:///./data/sialabs_local_rag.db"
-    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+    cors_origins: str = (
+        "http://localhost:5173,http://127.0.0.1:5173,"
+        "http://localhost:4182,http://127.0.0.1:4182,"
+        "http://localhost:4173,http://127.0.0.1:4173"
+    )
 
     chunk_size: int = Field(default=1200, ge=300, le=8000)
     chunk_overlap: int = Field(default=180, ge=0, le=2000)
