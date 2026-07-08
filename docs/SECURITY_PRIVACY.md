@@ -15,6 +15,22 @@ The local SQLite database stores:
 
 Anyone with access to the database file may be able to read this content.
 
+## Public repository safety
+
+The public repository is intended to include source code, documentation, deterministic demo fixtures and configuration examples only.
+
+It should not include:
+
+- real user documents;
+- local SQLite databases;
+- generated uploads;
+- real `.env` files;
+- API keys, tokens or credentials;
+- downloaded Ollama model files;
+- local release artifacts or installer output.
+
+Ollama models are external local dependencies and are not bundled in the repository.
+
 ## Data that must not be committed
 
 - real `.env` files;
@@ -35,7 +51,7 @@ The current application is designed for trusted local use. It does not provide:
 - user-specific retention policies;
 - hardened public deployment defaults.
 
-Do not expose the application or Ollama directly to the public internet without authentication, network controls and a deployment-specific security review.
+The launcher, frontend and backend flows are intended to run on `localhost` or `127.0.0.1`. Do not expose the application, launcher, backend API or Ollama directly to the public internet without authentication, network controls and a deployment-specific security review.
 
 ## File handling limitations
 
