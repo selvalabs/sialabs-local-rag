@@ -31,11 +31,18 @@ jobs:
       - name: Ruff
         run: uv run ruff check .
 
-      - name: Pytest
-        run: uv run pytest
+      - name: Pytest with coverage
+        run: uv run --with pytest-cov pytest --cov=sialabs_local_rag --cov-report=term-missing --cov-report=xml
 
       - name: Mypy
         run: uv run mypy src
+
+      - name: Upload backend coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage-xml
+          path: backend/coverage.xml
+          if-no-files-found: error
 
   frontend:
     name: Frontend quality gates
