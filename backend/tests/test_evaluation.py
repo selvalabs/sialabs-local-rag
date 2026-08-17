@@ -28,6 +28,7 @@ async def test_hash_evaluation_matches_recorded_baseline() -> None:
     assert report.question_version == baseline["question_version"]
     assert report.embedding_provider == baseline["embedding_provider"]
     assert report.embedding_model == baseline["embedding_model"]
+    assert report.retrieval_min_score == pytest.approx(baseline["retrieval_min_score"])
 
     recorded_metrics = baseline["metrics"]
     actual_metrics = report.metrics.model_dump()
@@ -62,6 +63,23 @@ async def test_baseline_captures_atlas_improvement_and_remaining_no_answer_gap()
 
 
 @pytest.mark.asyncio
+async def test_evaluation_can_sweep_minimum_score() -> None:
+    report = await run_evaluation(
+        load_corpus(_EVALUATION_DIR / "corpus.json"),
+        load_questions(_EVALUATION_DIR / "questions.json"),
+        HashEmbeddingProvider(),
+        minimum_score=0.25,
+    )
+
+    assert report.retrieval_min_score == 0.25
+    assert all(
+        source.score >= 0.25
+        for result in report.queries
+        for source in result.retrieved
+    )
+
+
+@pytest.mark.asyncio
 async def test_evaluation_report_has_human_and_machine_readable_forms() -> None:
     report = await run_evaluation(
         load_corpus(_EVALUATION_DIR / "corpus.json"),
@@ -73,7 +91,9 @@ async def test_evaluation_report_has_human_and_machine_readable_forms() -> None:
     machine = report.model_dump(mode="json")
 
     assert "Document hit@1" in human
+    assert "Minimum score" in human
     assert "Negative no-answer accuracy" in human
     assert "atlas-multi-evidence" in human
+    assert machine["retrieval_min_score"] == 0.0
     assert machine["metrics"]["total_queries"] == 8
     assert len(machine["queries"]) == 8
