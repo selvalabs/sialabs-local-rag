@@ -62,11 +62,17 @@ export type SourceChunk = {
   content: string
 }
 
+export type ConversationContextMessage = {
+  role: 'user' | 'assistant'
+  content: string
+}
+
 export type ChatResponse = {
   answer: string
   sources: SourceChunk[]
   provider: string
   model: string
+  retrieval_query: string
   retrieval_top_k: number
   latency_ms: number
 }
