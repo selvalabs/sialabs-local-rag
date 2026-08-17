@@ -137,7 +137,11 @@ def _sanitize_chat_source_metadata(connection: sqlite3.Connection) -> None:
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(version=1, name="baseline-local-rag-schema", apply=_create_core_schema),
     Migration(version=2, name="embedding-index-metadata", apply=_create_embedding_index_schema),
-    Migration(version=3, name="sanitize-chat-source-metadata", apply=_sanitize_chat_source_metadata),
+    Migration(
+        version=3,
+        name="sanitize-chat-source-metadata",
+        apply=_sanitize_chat_source_metadata,
+    ),
 )
 
 _CORE_TABLES = {"documents", "chunks", "chat_messages"}
