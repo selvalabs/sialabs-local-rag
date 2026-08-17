@@ -10,6 +10,7 @@ from sialabs_local_rag.schemas import SourceChunk
 from sialabs_local_rag.storage import Storage
 
 RetrievalMode = Literal["dense", "hybrid"]
+RetrievalChannel = Literal["dense", "lexical"]
 
 _TOKEN_PATTERN = re.compile(r"[\w-]+", flags=re.UNICODE)
 _STOPWORDS = {
@@ -83,29 +84,11 @@ def retrieve_sources(
     )
 
     if options.mode == "dense":
-        return [
-            source.model_copy(
-                update={
-                    "dense_score": source.score,
-                    "dense_rank": rank,
-                    "retrieval_channels": ["dense"],
-                }
-            )
-            for rank, source in enumerate(dense[:top_k], start=1)
-        ]
+        return _annotate_dense(dense[:top_k])
 
     lexical = _search_lexical(storage, query_text=query_text, limit=candidate_k)
     if not lexical:
-        return [
-            source.model_copy(
-                update={
-                    "dense_score": source.score,
-                    "dense_rank": rank,
-                    "retrieval_channels": ["dense"],
-                }
-            )
-            for rank, source in enumerate(dense[:top_k], start=1)
-        ]
+        return _annotate_dense(dense[:top_k])
 
     return _fuse_rrf(
         dense=dense,
@@ -115,6 +98,19 @@ def retrieve_sources(
         lexical_weight=options.lexical_weight,
         rrf_k=options.rrf_k,
     )
+
+
+def _annotate_dense(sources: Sequence[SourceChunk]) -> list[SourceChunk]:
+    return [
+        source.model_copy(
+            update={
+                "dense_score": source.score,
+                "dense_rank": rank,
+                "retrieval_channels": ["dense"],
+            }
+        )
+        for rank, source in enumerate(sources, start=1)
+    ]
 
 
 def lexical_query_from_text(text: str) -> str:
@@ -193,7 +189,7 @@ def _fuse_rrf(
         dense_rank = dense_ranks.get(chunk_id)
         lexical_rank = lexical_ranks.get(chunk_id)
         fusion_score = 0.0
-        channels: list[str] = []
+        channels: list[RetrievalChannel] = []
 
         if dense_rank is not None:
             fusion_score += dense_weight / (rrf_k + dense_rank)
@@ -219,11 +215,11 @@ def _fuse_rrf(
 
     candidates.sort(
         key=lambda item: (
-            item.fusion_score or 0.0,
-            0 if item.lexical_rank is not None else -1,
-            -(item.lexical_rank or 10_000),
-            -(item.dense_rank or 10_000),
-        ),
-        reverse=True,
+            -(item.fusion_score or 0.0),
+            0 if item.lexical_rank is not None else 1,
+            item.lexical_rank or 10_000,
+            item.dense_rank or 10_000,
+            item.chunk_id,
+        )
     )
     return candidates[:top_k]
