@@ -15,11 +15,10 @@ integer version and runs in ascending order during application startup.
 - A database with only part of that legacy schema is rejected instead of being
   guessed or silently repaired.
 - A database whose version is newer than the running application is rejected.
-- Migration execution and the version update run in one SQLite transaction. A
-  failed migration is rolled back before startup reports an error.
+- Migration execution and version updates run transactionally.
 
-Released migrations are append-only. New schema changes must add a new ordered
-migration instead of rewriting older migration definitions.
+Released migrations are append-only. New schema changes add a new ordered
+migration instead of rewriting older definitions.
 
 ## Current migrations
 
@@ -41,51 +40,58 @@ lightweight source identifiers. New chat records follow the same policy.
 
 ### Version 4 — optional FTS5 retrieval index
 
-Creates and backfills the optional `chunks_fts` table and synchronization triggers
-when SQLite FTS5 is available. If FTS5 is unavailable, the application remains
-usable through dense retrieval and retries FTS setup on later startup.
+Creates/backfills the optional `chunks_fts` table and synchronization triggers when
+SQLite FTS5 is available. If FTS5 is unavailable, the application stays usable via
+dense retrieval and retries FTS setup on later startup.
 
-### Version 5 — chunk source metadata
+### Version 5 — page/section source metadata
 
 Adds nullable source-location fields to `chunks`:
 
-- `page_number` for page-aware sources such as PDFs;
-- `section_title` for heading-aware sources such as Markdown;
-- `source_locator` for a compact stable locator such as `page:2` or
-  `section:Recovery`.
+- `page_number`;
+- `section_title`;
+- `source_locator`.
 
-Existing chunks remain valid and receive `NULL` values. No embedding reindex is
-required because the stored vector/content columns are not rewritten.
+Existing chunks remain valid with `NULL` values. No embedding reindex is required.
+The migration checks existing columns before each additive `ALTER TABLE`, so a
+partially newer-shaped schema can recover safely.
 
-The migration checks the existing `chunks` columns before each additive `ALTER
-TABLE`, making the nullable metadata upgrade safe if a database schema has already
-acquired one or more of these columns while its version marker still needs repair.
-An explicit v4-to-v5 upgrade test verifies that existing chunk content survives and
-metadata starts null.
+### Version 6 — richer Office source metadata
+
+Adds nullable source-location fields used by richer document formats:
+
+- `slide_number` for PPTX sources;
+- `sheet_name` for XLSX sources;
+- `cell_range` for bounded spreadsheet blocks.
+
+The migration uses the same idempotent per-column check as version 5. Existing
+page/section locators and chunk content remain unchanged, and old embeddings remain
+valid because vectors and indexed content are not rewritten.
+
+A v5-to-v6 upgrade test verifies that existing content and version-5 metadata
+survive and that new slide/sheet/range fields begin as `NULL`.
 
 ## Backup before important upgrades
 
-The application is local-first, so the SQLite file is the user's data store. Before
-an upgrade that changes stored data or performs a destructive migration:
+The SQLite file is the user's local data store. Before an important upgrade:
 
 1. Stop the local backend so no writes are in progress.
 2. Find the SQLite path configured by `DATABASE_URL`.
 3. Copy the database file to a separate backup location.
 4. Start the upgraded application and allow migrations to complete.
-5. Keep the backup until indexed documents and chat/data behavior have been
-   validated.
+5. Keep the backup until indexed documents and local behavior have been validated.
 
 ## Failure behavior
 
 If startup reports a schema migration error:
 
 - do not repeatedly modify the database by hand;
-- keep the original database and any backup unchanged;
-- record the application version and full migration error;
-- restore the backup if a destructive migration was involved;
+- keep the original database and backup unchanged;
+- record the application version and migration error;
+- restore a backup if a destructive migration was involved;
 - use a fresh database only when losing the existing local index is acceptable.
 
-Embedding incompatibility is not a schema migration failure. If
+Embedding incompatibility is separate from schema migration. If
 `GET /api/index/status` reports `legacy` or `incompatible`, use the explicit index
 reset/re-ingestion workflow documented in `docs/API.md`.
 
@@ -93,12 +99,11 @@ reset/re-ingestion workflow documented in `docs/API.md`.
 
 When adding a schema change:
 
-1. Add a new `Migration` entry with the next integer version.
+1. Add the next integer `Migration` entry.
 2. Keep previously released migrations immutable.
 3. Make the migration safe for the immediately previous supported schema.
-4. Add an upgrade test using a representative older schema/database state.
-5. Add a rollback test when the migration contains more than trivial additive DDL.
+4. Add a representative upgrade test.
+5. Add rollback coverage when the migration is more than trivial additive DDL.
 6. Run the complete backend quality gates before merge.
 
-The current schema version can be inspected programmatically with
-`Database.schema_version()`.
+The current schema version can be inspected with `Database.schema_version()`.

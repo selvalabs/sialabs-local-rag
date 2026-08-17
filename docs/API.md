@@ -40,46 +40,115 @@ X-Confirm-Local-Data-Reset: delete-all
 
 ### `POST /api/documents`
 
-Creates a document from pasted plain text.
-
-```json
-{
-  "title": "Example document",
-  "content": "First paragraph.\n\nSecond paragraph.",
-  "source_type": "manual"
-}
-```
-
-Plain-text ingestion preserves paragraph boundaries inside structured chunks when
-the content fits the configured chunk size. Larger content prefers paragraph,
-sentence and then word boundaries.
+Creates a document from pasted plain text. Paragraph boundaries are preserved by
+the structure-aware chunker.
 
 ### `POST /api/documents/upload`
 
-Uploads and indexes `.txt`, `.md`, `.markdown` or selectable-text `.pdf` files.
-Maximum upload size is 1 MB.
+Uploads and indexes local files up to **10 MB**. Supported extensions:
 
-The ingestion pipeline preserves source structure where the parser can recover it:
+- `.txt`
+- `.md`, `.markdown`
+- `.pdf`
+- `.docx`
+- `.pptx`
+- `.xlsx`
+- `.png`, `.jpg`, `.jpeg`, `.tif`, `.tiff` when optional local OCR is installed
 
-- Markdown headings define section boundaries. Returned sources may include
-  `section_title` and a locator such as `section:Recovery`.
-- PDF pages define hard chunking boundaries. Returned sources may include
-  `page_number` and a locator such as `page:2`.
-- Plain text preserves paragraph breaks but has no inferred page/section metadata.
-- Chunks never intentionally cross a parsed Markdown section or PDF page boundary.
+The ingestion pipeline keeps useful source structure instead of flattening every
+format into one anonymous text stream.
 
-Chunk text includes a compact human-readable prefix such as `Section: Recovery` or
-`Page 2`, while the API also exposes the location as structured fields.
+#### Markdown
 
-PDF limitations remain:
+Markdown headings define section boundaries. Sources may include:
 
-- scanned PDFs are not processed with OCR;
-- images are not extracted;
-- tables are not reconstructed;
-- password-protected, damaged or textless PDFs return a validation error.
+```json
+{
+  "section_title": "Recovery",
+  "source_locator": "section:Recovery"
+}
+```
 
-OCR and richer Office/document layout support are tracked separately from this
-structure-aware text ingestion path.
+#### PDF
+
+Selectable-text PDFs keep 1-based page boundaries. Sources may include:
+
+```json
+{
+  "page_number": 2,
+  "source_locator": "page:2"
+}
+```
+
+Text PDFs are limited to 100 pages per upload. A valid PDF with no extractable text
+falls back to the optional local OCR capability.
+
+#### DOCX
+
+DOCX is parsed directly from OOXML using the Python standard library. Heading-style
+paragraphs become section boundaries; ordinary paragraphs remain grouped under
+the current heading. No `python-docx` dependency is required.
+
+#### PPTX
+
+PPTX is parsed slide by slide. Sources can include:
+
+```json
+{
+  "slide_number": 2,
+  "section_title": "Recovery",
+  "source_locator": "slide:2"
+}
+```
+
+The parser preserves slide order and uses title placeholders when available.
+
+#### XLSX
+
+XLSX is represented as bounded row/cell blocks rather than blindly concatenating
+the entire workbook. Sources can include:
+
+```json
+{
+  "sheet_name": "Finance",
+  "cell_range": "A1:B25",
+  "source_locator": "sheet:Finance!A1:B25"
+}
+```
+
+Cell values remain associated with their references in chunk text, for example
+`A2=XLSX-99 | B2=10 percent`.
+
+#### Optional local OCR
+
+OCR is deliberately not part of the base installation or ordinary CI. From
+`backend/`, install the optional Python packages with:
+
+```powershell
+uv pip install -r requirements-ocr.txt
+```
+
+Then install the **local Tesseract OCR executable** and ensure it is available on
+`PATH`.
+
+OCR supports image uploads and textless/scanned PDFs. Scanned-PDF OCR is limited to
+50 pages and preserves page locators. If OCR packages or Tesseract are unavailable,
+the upload returns `503` with an actionable setup message instead of silently using
+a cloud service.
+
+#### Office/package safety limits
+
+OOXML parsers reject packages that exceed local safety bounds, including:
+
+- 5,000 ZIP package entries;
+- 50 MB total uncompressed OOXML content;
+- 20,000 DOCX paragraphs;
+- 200 PPTX slides;
+- 100 XLSX sheets;
+- 50,000 non-empty XLSX cells.
+
+These limits complement the 10 MB HTTP upload limit and reduce local resource risk
+from compressed document packages.
 
 ### `GET /api/documents`
 
@@ -96,37 +165,25 @@ Queries the local document collection. The request separates the current
 `question` from optional `conversation_context`; the response includes the backend
 `retrieval_query` used for embedding/search.
 
-Example:
+A retrieved source may expose any applicable structured location fields:
 
 ```json
 {
-  "question": "What is its notice period?",
-  "conversation_context": [
-    {
-      "role": "user",
-      "content": "Explain the Cedar remote-work policy."
-    }
-  ],
-  "top_k": 5
-}
-```
-
-A retrieved source can now include location metadata:
-
-```json
-{
-  "document_title": "Maintenance Manual",
+  "document_title": "Quarterly Finance.xlsx",
   "chunk_index": 3,
   "page_number": null,
-  "section_title": "Recovery",
-  "source_locator": "section:Recovery",
+  "section_title": null,
+  "slide_number": null,
+  "sheet_name": "Finance",
+  "cell_range": "A1:B25",
+  "source_locator": "sheet:Finance!A1:B25",
   "score": 0.0324,
-  "content": "Section: Recovery\n\n..."
+  "content": "Sheet: Finance · Range A1:B25\n\n..."
 }
 ```
 
-For PDFs, `page_number` is 1-based. Fields remain `null` for legacy chunks or source
-formats where that location type does not exist.
+Fields remain `null` when they do not apply or when legacy chunks predate the
+metadata migration.
 
 Conversation history is dialogue context, not factual evidence. Assistant-history
 text is never copied into the embedding query, and factual answer claims must be
@@ -134,14 +191,10 @@ grounded in retrieved sources.
 
 ## Embedding compatibility and reindexing
 
-The application never intentionally mixes vectors from different declared
-embedding spaces. Legacy or incompatible indexes return `409 Conflict` with an
-explicit reset/re-ingestion path.
-
-Adding source metadata in schema version 5 does **not** require a reindex of old
-vectors. Existing chunks remain valid with nullable page/section/locator fields.
-Re-ingestion is only needed when the user wants historical documents to gain the
-newly extractable structure metadata.
+Adding source metadata in schema versions 5 and 6 does **not** require an embedding
+reindex. Existing chunks remain valid with nullable location fields. Re-ingestion is
+only needed when historical documents should gain newly extractable page/section/
+slide/sheet metadata.
 
 ## Expected errors
 
@@ -150,7 +203,7 @@ newly extractable structure metadata.
 | 400 | Full local-data reset confirmation header is missing or invalid |
 | 403 | Full local-data reset is requested from a non-loopback client |
 | 409 | Duplicate document or incompatible/legacy embedding index |
-| 413 | Upload exceeds the size limit |
+| 413 | Upload exceeds the 10 MB local limit |
 | 415 | Unsupported file extension |
-| 422 | Invalid payload, non-UTF-8 text or invalid PDF |
-| 503 | Ollama is unavailable or a provider request fails |
+| 422 | Supported file is malformed, unreadable or contains no usable text |
+| 503 | Ollama fails, or optional local OCR/Tesseract is unavailable |
