@@ -4,6 +4,7 @@ from io import BytesIO
 from types import SimpleNamespace
 
 import pytest
+from fastapi.testclient import TestClient
 
 import sialabs_local_rag.ocr as ocr_module
 import sialabs_local_rag.parsing as parsing_module
@@ -74,6 +75,26 @@ def test_missing_ocr_packages_have_actionable_install_message(
 
     with pytest.raises(OcrUnavailableError, match="requirements-ocr.txt"):
         ocr_module.ocr_image_document(b"fake-image", "scan.png")
+
+
+def test_missing_ocr_capability_is_actionable_through_api(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def unavailable(**_: object) -> OcrRuntime:
+        raise OcrUnavailableError(
+            "Local OCR is optional. Run `uv pip install -r requirements-ocr.txt`."
+        )
+
+    monkeypatch.setattr(ocr_module, "_load_ocr_runtime", unavailable)
+
+    response = client.post(
+        "/api/documents/upload",
+        files={"file": ("scan.png", b"fake-image", "image/png")},
+    )
+
+    assert response.status_code == 503
+    assert "requirements-ocr.txt" in response.json()["detail"]
 
 
 def test_image_ocr_returns_image_locator(monkeypatch: pytest.MonkeyPatch) -> None:
