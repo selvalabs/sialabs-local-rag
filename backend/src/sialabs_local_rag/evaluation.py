@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Literal, cast
@@ -268,15 +268,15 @@ def _aggregate_metrics(results: Sequence[QueryEvaluationResult]) -> EvaluationMe
     )
 
 
-def _average(values: Sequence[float] | object) -> float:
-    materialized = list(cast(Sequence[float], values))
+def _average(values: Iterable[float]) -> float:
+    materialized = list(values)
     if not materialized:
         return 0.0
     return sum(materialized) / len(materialized)
 
 
-def _average_bool(values: object) -> float:
-    materialized = list(cast(Sequence[bool], values))
+def _average_bool(values: Iterable[bool]) -> float:
+    materialized = list(values)
     if not materialized:
         return 0.0
     return sum(1 for value in materialized if value) / len(materialized)
