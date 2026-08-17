@@ -3,8 +3,9 @@ from __future__ import annotations
 from collections.abc import Sequence
 from time import perf_counter
 
-from sialabs_local_rag.chunking import chunk_text
+from sialabs_local_rag.chunking import chunk_parsed_segments
 from sialabs_local_rag.conversation import build_retrieval_query
+from sialabs_local_rag.parsing import ParsedDocument, parse_plain_text_document
 from sialabs_local_rag.prompting import SYSTEM_PROMPT, build_rag_prompt
 from sialabs_local_rag.providers import (
     ChatProvider,
@@ -23,6 +24,7 @@ from sialabs_local_rag.schemas import (
     RuntimeTestResponse,
 )
 from sialabs_local_rag.settings import Settings
+from sialabs_local_rag.source_metadata import persist_chunk_source_metadata
 from sialabs_local_rag.storage import ChunkInput, Storage
 
 _PROFILE_TOP_K = {
@@ -52,31 +54,59 @@ class RagService:
         self.chat_provider = chat_provider
 
     async def ingest_text(self, title: str, content: str, source_type: str) -> DocumentResponse:
-        chunks = chunk_text(
-            content,
+        return await self.ingest_parsed_document(
+            title=title,
+            document=parse_plain_text_document(content),
+            source_type=source_type,
+        )
+
+    async def ingest_parsed_document(
+        self,
+        title: str,
+        document: ParsedDocument,
+        source_type: str,
+    ) -> DocumentResponse:
+        structured_chunks = chunk_parsed_segments(
+            document.segments,
             chunk_size=self.settings.chunk_size,
             overlap=self.settings.chunk_overlap,
         )
-        if not chunks:
+        if not structured_chunks:
             raise EmptyDocumentError("Document content did not produce any chunks.")
 
         self.storage.assert_embedding_compatible(
             provider=self.embedding_provider.name,
             model=self.embedding_provider.model,
         )
-        embeddings = await self.embedding_provider.embed(chunks)
+        chunk_contents = [chunk.content for chunk in structured_chunks]
+        embeddings = await self.embedding_provider.embed(chunk_contents)
+        if len(embeddings) != len(structured_chunks):
+            raise ProviderError(
+                "Embedding provider returned an unexpected number of vectors."
+            )
+
         chunk_inputs = [
-            ChunkInput(index=index, content=chunk, embedding=embeddings[index])
-            for index, chunk in enumerate(chunks)
+            ChunkInput(
+                index=index,
+                content=chunk.content,
+                embedding=embeddings[index],
+            )
+            for index, chunk in enumerate(structured_chunks)
         ]
-        return self.storage.create_document(
+        created = self.storage.create_document(
             title=title.strip(),
             source_type=source_type.strip(),
-            original_content=content,
+            original_content=document.content,
             chunks=chunk_inputs,
             embedding_provider=self.embedding_provider.name,
             embedding_model=self.embedding_provider.model,
         )
+        persist_chunk_source_metadata(
+            database=self.storage.database,
+            document_id=created.id,
+            chunks=structured_chunks,
+        )
+        return created
 
     async def answer_question(
         self,

@@ -60,6 +60,9 @@ export type SourceChunk = {
   chunk_index: number
   score: number
   content: string
+  page_number?: number | null
+  section_title?: string | null
+  source_locator?: string | null
 }
 
 export type ConversationContextMessage = {

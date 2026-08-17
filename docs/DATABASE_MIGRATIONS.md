@@ -25,64 +25,43 @@ migration instead of rewriting older migration definitions.
 
 ### Version 1 — baseline local RAG schema
 
-Creates or adopts the original:
-
-- `documents`;
-- `chunks`;
-- `chat_messages`;
-- chunk indexes.
+Creates or adopts the original `documents`, `chunks`, `chat_messages` tables and
+chunk indexes.
 
 ### Version 2 — embedding index metadata
 
-Adds the singleton `embedding_index` table containing:
-
-- embedding provider;
-- embedding model;
-- vector dimension;
-- creation/update timestamps.
-
-The migration deliberately does **not** guess metadata for already-indexed legacy
-chunks. Existing chunks without an `embedding_index` row are treated as requiring
-an explicit index reset/re-ingestion because their original vector space cannot be
-proven from the old database alone.
-
-A legacy database with no chunks can continue normally: the first new ingestion
-establishes the embedding signature.
+Adds the singleton `embedding_index` table containing provider, model, vector
+dimension and timestamps. Legacy chunks are not assigned guessed embedding
+metadata; incompatible/unknown indexes require explicit reset and re-ingestion.
 
 ### Version 3 — sanitize persisted chat source metadata
 
-Removes copied source `content` values from existing `chat_messages.metadata_json`
-records while preserving lightweight identifiers such as:
-
-- chunk id;
-- document id/title;
-- chunk index;
-- retrieval score.
-
-Other metadata fields are preserved. Malformed legacy metadata is replaced by a
-safe empty source list instead of blocking application startup.
-
-New chat records follow the same lightweight metadata policy, so migration version
-3 is primarily a cleanup step for databases created by older versions.
+Removes copied source `content` values from existing chat metadata while preserving
+lightweight source identifiers. New chat records follow the same policy.
 
 ### Version 4 — optional FTS5 retrieval index
 
-Attempts to create the local `chunks_fts` SQLite FTS5 index used by hybrid
-lexical+dense retrieval. When FTS5 is available, the migration:
+Creates and backfills the optional `chunks_fts` table and synchronization triggers
+when SQLite FTS5 is available. If FTS5 is unavailable, the application remains
+usable through dense retrieval and retries FTS setup on later startup.
 
-- creates the virtual FTS table;
-- backfills existing chunks and document titles;
-- installs chunk insert/update/delete triggers so lexical state follows the primary
-  `chunks` table automatically.
+### Version 5 — chunk source metadata
 
-FTS5 is an optional capability rather than a hard database requirement. If the
-local SQLite build does not provide FTS5, schema migration still completes and the
-application remains usable through dense retrieval. Startup retries FTS setup on
-later runs, so moving the same database to an FTS5-capable SQLite build can enable
-the lexical index without rebuilding the dense index.
+Adds nullable source-location fields to `chunks`:
 
-The application can also force dense-only retrieval through
-`RETRIEVAL_MODE=dense`.
+- `page_number` for page-aware sources such as PDFs;
+- `section_title` for heading-aware sources such as Markdown;
+- `source_locator` for a compact stable locator such as `page:2` or
+  `section:Recovery`.
+
+Existing chunks remain valid and receive `NULL` values. No embedding reindex is
+required because the stored vector/content columns are not rewritten.
+
+The migration checks the existing `chunks` columns before each additive `ALTER
+TABLE`, making the nullable metadata upgrade safe if a database schema has already
+acquired one or more of these columns while its version marker still needs repair.
+An explicit v4-to-v5 upgrade test verifies that existing chunk content survives and
+metadata starts null.
 
 ## Backup before important upgrades
 
@@ -96,9 +75,6 @@ an upgrade that changes stored data or performs a destructive migration:
 5. Keep the backup until indexed documents and chat/data behavior have been
    validated.
 
-For the default relative database configuration, resolve the path from the working
-directory used to start the backend.
-
 ## Failure behavior
 
 If startup reports a schema migration error:
@@ -108,9 +84,6 @@ If startup reports a schema migration error:
 - record the application version and full migration error;
 - restore the backup if a destructive migration was involved;
 - use a fresh database only when losing the existing local index is acceptable.
-
-A migration failure should not leave a partially applied schema. Tests cover
-transaction rollback and upgrade from the pre-vNext schema.
 
 Embedding incompatibility is not a schema migration failure. If
 `GET /api/index/status` reports `legacy` or `incompatible`, use the explicit index

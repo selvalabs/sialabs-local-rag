@@ -225,6 +225,21 @@ def _create_fts_schema_migration(connection: sqlite3.Connection) -> None:
     _ensure_optional_fts_schema(connection)
 
 
+def _add_chunk_source_metadata(connection: sqlite3.Connection) -> None:
+    existing_columns = {
+        str(row["name"])
+        for row in connection.execute("PRAGMA table_info(chunks)").fetchall()
+    }
+    additions = (
+        ("page_number", "ALTER TABLE chunks ADD COLUMN page_number INTEGER"),
+        ("section_title", "ALTER TABLE chunks ADD COLUMN section_title TEXT"),
+        ("source_locator", "ALTER TABLE chunks ADD COLUMN source_locator TEXT"),
+    )
+    for column_name, statement in additions:
+        if column_name not in existing_columns:
+            connection.execute(statement)
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(version=1, name="baseline-local-rag-schema", apply=_create_core_schema),
     Migration(version=2, name="embedding-index-metadata", apply=_create_embedding_index_schema),
@@ -234,6 +249,7 @@ MIGRATIONS: tuple[Migration, ...] = (
         apply=_sanitize_chat_source_metadata,
     ),
     Migration(version=4, name="optional-fts5-retrieval-index", apply=_create_fts_schema_migration),
+    Migration(version=5, name="chunk-source-metadata", apply=_add_chunk_source_metadata),
 )
 
 _CORE_TABLES = {"documents", "chunks", "chat_messages"}
