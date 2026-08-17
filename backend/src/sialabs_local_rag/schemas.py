@@ -72,6 +72,16 @@ class IndexResetResponse(BaseModel):
     chunks_deleted: int
 
 
+class ChatHistoryClearResponse(BaseModel):
+    messages_deleted: int
+
+
+class LocalDataResetResponse(BaseModel):
+    documents_deleted: int
+    chunks_deleted: int
+    chat_messages_deleted: int
+
+
 class DocumentCreate(BaseModel):
     title: str = Field(min_length=1, max_length=160)
     content: str = Field(min_length=10, max_length=1_000_000)

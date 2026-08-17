@@ -49,6 +49,22 @@ proven from the old database alone.
 A legacy database with no chunks can continue normally: the first new ingestion
 establishes the embedding signature.
 
+### Version 3 — sanitize persisted chat source metadata
+
+Removes copied source `content` values from existing `chat_messages.metadata_json`
+records while preserving lightweight identifiers such as:
+
+- chunk id;
+- document id/title;
+- chunk index;
+- retrieval score.
+
+Other metadata fields are preserved. Malformed legacy metadata is replaced by a
+safe empty source list instead of blocking application startup.
+
+New chat records follow the same lightweight metadata policy, so migration version
+3 is primarily a cleanup step for databases created by older versions.
+
 ## Backup before important upgrades
 
 The application is local-first, so the SQLite file is the user's data store. Before
