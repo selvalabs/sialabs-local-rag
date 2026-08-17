@@ -4,6 +4,7 @@ from collections.abc import Sequence
 from time import perf_counter
 
 from sialabs_local_rag.chunking import chunk_parsed_segments
+from sialabs_local_rag.collection_store import CollectionStore
 from sialabs_local_rag.conversation import build_retrieval_query
 from sialabs_local_rag.parsing import ParsedDocument, parse_plain_text_document
 from sialabs_local_rag.prompting import SYSTEM_PROMPT, build_rag_prompt
@@ -52,6 +53,7 @@ class RagService:
         self.storage = storage
         self.embedding_provider = embedding_provider
         self.chat_provider = chat_provider
+        self.collections = CollectionStore(storage.database)
 
     async def ingest_text(self, title: str, content: str, source_type: str) -> DocumentResponse:
         return await self.ingest_parsed_document(
@@ -106,16 +108,21 @@ class RagService:
             document_id=created.id,
             chunks=structured_chunks,
         )
+        self.collections.attach_default_document(created)
         return created
 
     async def answer_question(
         self,
         question: str,
         conversation_context: Sequence[ConversationMessage] = (),
+        collection_id: str | None = None,
         top_k: int | None = None,
         runtime_options: RuntimeOptions | None = None,
     ) -> ChatResponse:
         started_at = perf_counter()
+        if collection_id is not None:
+            self.collections.get_collection(collection_id)
+
         selected_top_k = top_k or get_top_k_for_runtime(
             runtime_options,
             default_top_k=self.settings.retrieval_top_k,
@@ -142,6 +149,7 @@ class RagService:
                 rrf_k=self.settings.retrieval_rrf_k,
                 candidate_multiplier=self.settings.retrieval_candidate_multiplier,
             ),
+            collection_id=collection_id,
         )
         provider_runtime_options = to_provider_runtime_options(runtime_options)
 
@@ -180,6 +188,7 @@ class RagService:
             model=response_model,
             retrieval_query=retrieval_query,
             retrieval_top_k=selected_top_k,
+            collection_id=collection_id,
             latency_ms=latency_ms,
         )
 
