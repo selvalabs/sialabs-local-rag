@@ -10,101 +10,76 @@ Checks API availability.
 
 ### `GET /api/config`
 
-Returns non-sensitive runtime configuration:
-
-- chat provider and model;
-- embedding provider and model;
-- retrieval top K;
-- chunk size and overlap.
-
-Secrets and private environment values are not returned.
+Returns non-sensitive runtime configuration such as provider/model, retrieval and
+chunking settings. Secrets and private environment values are not returned.
 
 ### `GET /api/index/status`
 
 Reports whether the persisted embedding index is compatible with the currently
-configured embedding provider/model.
-
-Possible states:
-
-- `empty` — there are no indexed chunks; the next ingestion may establish the
-  current embedding signature;
-- `ready` — persisted provider/model metadata matches the current configuration;
-- `legacy` — chunks exist but predate embedding metadata, so compatibility cannot
-  be proven;
-- `incompatible` — indexed chunks were created with a different provider/model.
-
-The response also includes the stored vector dimension when known and a
-`reindex_required` flag.
+configured embedding provider/model. Possible states are `empty`, `ready`,
+`legacy` and `incompatible`.
 
 ### `DELETE /api/index`
 
-Explicitly resets the document/vector index so documents can be re-ingested with a
-new embedding configuration. The operation deletes indexed documents and their
-chunks, removes the stored embedding signature and clears persisted backend chat
-traces because answers may contain facts derived from the removed documents.
+Deletes indexed documents/chunks, embedding signature and persisted chat traces so
+the collection can be re-ingested with another embedding configuration.
 
 ### `DELETE /api/chat/history`
 
-Deletes all persisted backend chat trace records. New chat records keep the
-question, answer, runtime metadata and lightweight source identifiers, but do not
-copy retrieved chunk text into `metadata_json`.
-
-The frontend Clear chat action calls this endpoint and also removes the browser
-conversation history.
+Deletes persisted backend chat traces. New records keep lightweight source
+metadata but do not copy retrieved chunk text into `metadata_json`.
 
 ### `DELETE /api/local-data`
 
-Performs a destructive reset of the app's persisted local knowledge data:
-
-- documents;
-- chunks;
-- embedding-index signature;
-- backend chat traces.
-
-The endpoint is deliberately guarded. In normal runtime the request must originate
-from a loopback client and must include:
+Performs a destructive reset of documents, chunks, embedding signature and backend
+chat traces. Normal runtime requires a loopback request and:
 
 ```text
 X-Confirm-Local-Data-Reset: delete-all
 ```
 
-This endpoint is not intended as a public or routine remote administration API.
-
 ### `POST /api/documents`
 
-Creates a document from pasted text.
+Creates a document from pasted plain text.
 
 ```json
 {
   "title": "Example document",
-  "content": "Text with enough content for indexing.",
+  "content": "First paragraph.\n\nSecond paragraph.",
   "source_type": "manual"
 }
 ```
 
-The first successful ingestion into an empty index records the embedding
-provider/model/vector dimension. Later ingestion must use the same embedding
-space while indexed chunks remain.
+Plain-text ingestion preserves paragraph boundaries inside structured chunks when
+the content fits the configured chunk size. Larger content prefers paragraph,
+sentence and then word boundaries.
 
 ### `POST /api/documents/upload`
 
-Uploads and indexes a supported file. Accepted extensions:
+Uploads and indexes `.txt`, `.md`, `.markdown` or selectable-text `.pdf` files.
+Maximum upload size is 1 MB.
 
-- `.txt`
-- `.md`
-- `.markdown`
-- `.pdf`
+The ingestion pipeline preserves source structure where the parser can recover it:
 
-The maximum upload size is 1 MB.
+- Markdown headings define section boundaries. Returned sources may include
+  `section_title` and a locator such as `section:Recovery`.
+- PDF pages define hard chunking boundaries. Returned sources may include
+  `page_number` and a locator such as `page:2`.
+- Plain text preserves paragraph breaks but has no inferred page/section metadata.
+- Chunks never intentionally cross a parsed Markdown section or PDF page boundary.
 
-Text and Markdown files must be UTF-8. For PDFs, the backend extracts selectable text and sends the extracted content through the same chunking and indexing pipeline.
+Chunk text includes a compact human-readable prefix such as `Section: Recovery` or
+`Page 2`, while the API also exposes the location as structured fields.
 
-PDF limitations:
+PDF limitations remain:
 
 - scanned PDFs are not processed with OCR;
 - images are not extracted;
 - tables are not reconstructed;
 - password-protected, damaged or textless PDFs return a validation error.
+
+OCR and richer Office/document layout support are tracked separately from this
+structure-aware text ingestion path.
 
 ### `GET /api/documents`
 
@@ -112,24 +87,16 @@ Lists indexed documents.
 
 ### `DELETE /api/documents/{document_id}`
 
-Deletes a document and its associated chunks. A successful deletion also clears
-persisted backend chat history so generated answers derived from the deleted
-source are not retained as an undocumented secondary copy.
-
-The frontend clears its local conversation state after a successful document
-deletion as well.
+Deletes a document and its chunks and clears persisted backend chat history because
+previous generated answers may derive from the deleted source.
 
 ### `POST /api/chat`
 
-Queries the local document collection. The contract separates three concepts:
+Queries the local document collection. The request separates the current
+`question` from optional `conversation_context`; the response includes the backend
+`retrieval_query` used for embedding/search.
 
-- `question` is the user's current intent and is preserved as the original chat
-  question;
-- `conversation_context` contains recent dialogue turns and is optional;
-- `retrieval_query` is produced by the backend and returned in the response for
-  evaluation/debugging.
-
-Example follow-up request:
+Example:
 
 ```json
 {
@@ -138,81 +105,43 @@ Example follow-up request:
     {
       "role": "user",
       "content": "Explain the Cedar remote-work policy."
-    },
-    {
-      "role": "assistant",
-      "content": "The previous answer is available as dialogue context."
     }
   ],
   "top_k": 5
 }
 ```
 
-Standalone questions use the current question directly as the retrieval query.
-For short/referential follow-ups, the deterministic backend resolver may prepend
-the latest relevant user turn. Assistant-generated history is never copied into
-the embedding query.
+A retrieved source can now include location metadata:
 
-Conversation context remains available to the answer-generation prompt for dialogue
-continuity, but it is explicitly labeled as non-evidence. Factual claims must come
-from retrieved document sources; prior assistant text must not be treated as a
-source of truth.
+```json
+{
+  "document_title": "Maintenance Manual",
+  "chunk_index": 3,
+  "page_number": null,
+  "section_title": "Recovery",
+  "source_locator": "section:Recovery",
+  "score": 0.0324,
+  "content": "Section: Recovery\n\n..."
+}
+```
 
-A response includes:
+For PDFs, `page_number` is 1-based. Fields remain `null` for legacy chunks or source
+formats where that location type does not exist.
 
-- generated answer;
-- retrieved sources;
-- provider and model metadata;
-- derived `retrieval_query`;
-- retrieval top K;
-- latency in milliseconds.
-
-Before retrieval, the application verifies that the configured embedding
-provider/model matches the persisted index signature. After creating the query
-embedding, the vector dimension is checked as well.
-
-Retrieved source content is returned to the active client so it can be inspected,
-but it is not duplicated into new backend chat trace metadata. The frontend also
-does not serialize the detailed response/source objects into persistent browser
-chat history.
-
-## Conversational retrieval behavior
-
-The follow-up resolver is intentionally deterministic and cheap. It does not add a
-mandatory second LLM call.
-
-Representative behavior:
-
-- a standalone topic switch such as `Explain Harbor finance reserve requirements.`
-  remains exactly that retrieval query even after a Cedar conversation;
-- a referential follow-up such as `What is its notice period?` can use the latest
-  user question as an anchor;
-- misleading or incorrect assistant-history text is excluded from the retrieval
-  query;
-- if there is no previous user message to resolve a reference, the current question
-  remains standalone rather than guessing an anchor.
-
-This separation prevents generated assistant prose from silently changing what is
-embedded while preserving enough recent dialogue for follow-up continuity.
+Conversation history is dialogue context, not factual evidence. Assistant-history
+text is never copied into the embedding query, and factual answer claims must be
+grounded in retrieved sources.
 
 ## Embedding compatibility and reindexing
 
 The application never intentionally mixes vectors from different declared
-embedding spaces.
+embedding spaces. Legacy or incompatible indexes return `409 Conflict` with an
+explicit reset/re-ingestion path.
 
-If indexed chunks were created before embedding metadata existed, or if the
-configured provider/model/dimension is incompatible with the stored index,
-document ingestion and chat return `409 Conflict` with a reindex instruction.
-
-Safe recovery is explicit:
-
-1. Back up the local SQLite database if the existing index matters.
-2. Call `GET /api/index/status` to inspect the reason.
-3. Call `DELETE /api/index` only when you accept removing the indexed documents and associated chat traces.
-4. Re-ingest the source documents using the current embedding configuration.
-
-The application does not silently reconstruct/re-embed old documents because the
-current schema does not preserve every original uploaded file in a lossless form.
+Adding source metadata in schema version 5 does **not** require a reindex of old
+vectors. Existing chunks remain valid with nullable page/section/locator fields.
+Re-ingestion is only needed when the user wants historical documents to gain the
+newly extractable structure metadata.
 
 ## Expected errors
 
