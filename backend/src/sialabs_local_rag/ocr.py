@@ -36,7 +36,8 @@ def ocr_image_document(raw_content: bytes, filename: str) -> ParsedDocument:
             close()
     except Exception as exc:
         raise DocumentParsingError(
-            "Image OCR failed. Verify that the image is readable and Tesseract supports its language."
+            "Image OCR failed. Verify that the image is readable and that "
+            "Tesseract supports its language."
         ) from exc
 
     if not text:
