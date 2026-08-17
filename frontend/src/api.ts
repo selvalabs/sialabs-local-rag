@@ -116,19 +116,84 @@ export async function clearChatHistory(): Promise<void> {
 
 export async function askQuestion(
   question: string,
-  conversationContext: ConversationContextMessage[],
-  runtimeOptions?: RuntimeOptions,
-  topK?: number,
+  conversationContextOrRuntime: ConversationContextMessage[] | RuntimeOptions = [],
+  runtimeOptionsOrTopK?: RuntimeOptions | number,
+  explicitTopK?: number,
 ): Promise<ChatResponse> {
+  const explicitContext = Array.isArray(conversationContextOrRuntime)
+  const parsed = explicitContext
+    ? { question, context: conversationContextOrRuntime }
+    : parseLegacyContextualQuestion(question)
+  const runtimeOptions = explicitContext
+    ? (typeof runtimeOptionsOrTopK === 'object' ? runtimeOptionsOrTopK : undefined)
+    : conversationContextOrRuntime
+  const topK = explicitContext
+    ? (typeof runtimeOptionsOrTopK === 'number' ? runtimeOptionsOrTopK : explicitTopK)
+    : (typeof runtimeOptionsOrTopK === 'number' ? runtimeOptionsOrTopK : undefined)
+
   const response = await fetchApi(`${API_URL}/api/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      question,
-      conversation_context: conversationContext,
+      question: parsed.question,
+      conversation_context: parsed.context,
       runtime_options: runtimeOptions,
       top_k: topK,
     }),
   })
   return parseJsonResponse<ChatResponse>(response)
+}
+
+function parseLegacyContextualQuestion(input: string): {
+  question: string
+  context: ConversationContextMessage[]
+} {
+  const markers = [
+    {
+      contextHeading: 'Recent conversation context:',
+      questionHeading: 'Current user question:',
+      userPrefix: 'User: ',
+      assistantPrefix: 'Assistant: ',
+    },
+    {
+      contextHeading: 'Contexto recente da conversa:',
+      questionHeading: 'Pergunta atual do usuário:',
+      userPrefix: 'Usuário: ',
+      assistantPrefix: 'Assistente: ',
+    },
+  ]
+
+  for (const marker of markers) {
+    const contextStart = input.indexOf(marker.contextHeading)
+    const questionStart = input.lastIndexOf(marker.questionHeading)
+    if (contextStart !== 0 || questionStart <= marker.contextHeading.length) continue
+
+    const rawContext = input
+      .slice(marker.contextHeading.length, questionStart)
+      .trim()
+    const currentQuestion = input
+      .slice(questionStart + marker.questionHeading.length)
+      .trim()
+    if (!currentQuestion) continue
+
+    const context = rawContext
+      .split(/\n\n+/)
+      .map((block): ConversationContextMessage | null => {
+        if (block.startsWith(marker.userPrefix)) {
+          return { role: 'user', content: block.slice(marker.userPrefix.length).trim() }
+        }
+        if (block.startsWith(marker.assistantPrefix)) {
+          return { role: 'assistant', content: block.slice(marker.assistantPrefix.length).trim() }
+        }
+        return null
+      })
+      .filter((message): message is ConversationContextMessage =>
+        message !== null && message.content.length > 0,
+      )
+      .slice(-12)
+
+    return { question: currentQuestion, context }
+  }
+
+  return { question: input, context: [] }
 }
