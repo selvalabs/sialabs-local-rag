@@ -65,6 +65,25 @@ safe empty source list instead of blocking application startup.
 New chat records follow the same lightweight metadata policy, so migration version
 3 is primarily a cleanup step for databases created by older versions.
 
+### Version 4 — optional FTS5 retrieval index
+
+Attempts to create the local `chunks_fts` SQLite FTS5 index used by hybrid
+lexical+dense retrieval. When FTS5 is available, the migration:
+
+- creates the virtual FTS table;
+- backfills existing chunks and document titles;
+- installs chunk insert/update/delete triggers so lexical state follows the primary
+  `chunks` table automatically.
+
+FTS5 is an optional capability rather than a hard database requirement. If the
+local SQLite build does not provide FTS5, schema migration still completes and the
+application remains usable through dense retrieval. Startup retries FTS setup on
+later runs, so moving the same database to an FTS5-capable SQLite build can enable
+the lexical index without rebuilding the dense index.
+
+The application can also force dense-only retrieval through
+`RETRIEVAL_MODE=dense`.
+
 ## Backup before important upgrades
 
 The application is local-first, so the SQLite file is the user's data store. Before
