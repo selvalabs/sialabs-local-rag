@@ -25,7 +25,8 @@ async def test_structure_sensitive_evaluation_cases(tmp_path: Path) -> None:
 
     provider = HashEmbeddingProvider()
     for case in fixture["cases"]:
-        database = Database(f"sqlite:///{tmp_path / f'{case['id']}.db'}")
+        case_id = str(case["id"])
+        database = Database(f"sqlite:///{tmp_path / f'{case_id}.db'}")
         database.init_schema()
         storage = Storage(database)
         parsed = parse_uploaded_document_structured(
@@ -73,6 +74,6 @@ async def test_structure_sensitive_evaluation_cases(tmp_path: Path) -> None:
             for source in sources
             if source.section_title == case["expected_section"]
         ]
-        assert matching, case["id"]
+        assert matching, case_id
         assert matching[0].source_locator == case["expected_locator"]
         assert case["expected_evidence"] in matching[0].content
