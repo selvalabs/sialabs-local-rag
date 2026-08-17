@@ -117,8 +117,14 @@ class SourceChunk(BaseModel):
     retrieval_channels: list[Literal["dense", "lexical"]] = Field(default_factory=list)
 
 
+class ConversationMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=4000)
+
+
 class ChatRequest(BaseModel):
     question: str = Field(min_length=3, max_length=4000)
+    conversation_context: list[ConversationMessage] = Field(default_factory=list, max_length=12)
     top_k: int | None = Field(default=None, ge=1, le=12)
     runtime_options: RuntimeOptions | None = None
 
@@ -128,5 +134,6 @@ class ChatResponse(BaseModel):
     sources: list[SourceChunk]
     provider: str
     model: str
+    retrieval_query: str
     retrieval_top_k: int
     latency_ms: int
