@@ -62,6 +62,19 @@ def read_json_body(handler: BaseHTTPRequestHandler) -> dict[str, Any]:
     return json.loads(raw_body.decode("utf-8"))
 
 
+def browser_mutation_is_trusted(
+    origin: str | None,
+    sec_fetch_site: str | None,
+) -> bool:
+    """Reject browser cross-site mutations while allowing trusted local UI and local scripts."""
+
+    if sec_fetch_site and sec_fetch_site.casefold() == "cross-site":
+        return False
+    if origin is not None and origin not in LOCAL_FRONTEND_ORIGINS:
+        return False
+    return True
+
+
 def check_http(url: str, timeout: float = 1.5) -> dict[str, Any]:
     request = Request(url, method="GET")
     started_at = time.perf_counter()
@@ -286,6 +299,12 @@ class LauncherHandler(BaseHTTPRequestHandler):
             return True
         return self.headers.get("X-SIALabs-Launcher-Token") == TOKEN
 
+    def browser_mutation_is_trusted(self) -> bool:
+        return browser_mutation_is_trusted(
+            self.headers.get("Origin"),
+            self.headers.get("Sec-Fetch-Site"),
+        )
+
     def do_OPTIONS(self) -> None:  # noqa: N802
         self.send_response(204)
         self.end_headers()
@@ -305,6 +324,9 @@ class LauncherHandler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:  # noqa: N802
         if not self.token_is_valid():
             self.send_json(401, {"error": "invalid launcher token"})
+            return
+        if not self.browser_mutation_is_trusted():
+            self.send_json(403, {"error": "untrusted launcher mutation origin"})
             return
 
         try:

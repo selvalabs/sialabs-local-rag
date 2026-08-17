@@ -1,6 +1,6 @@
 # SIALabs Local Launcher
 
-The local launcher is a small helper process for local development and future installer work.
+The local launcher is a small helper process for local development and Windows installer/startup work.
 
 It runs on `127.0.0.1:8765` and exposes a fixed set of safe runtime actions so the frontend can inspect and control the local backend without executing arbitrary operating-system commands from the browser.
 
@@ -20,6 +20,8 @@ py .\launcher\local_launcher.py
 
 The launcher prints the bind address and the backend directory it will use.
 
+The normal Windows app flow starts this launcher through `scripts/start-local-app.ps1`, so manual launcher startup is not required for everyday shortcut use.
+
 ## Endpoints
 
 ```text
@@ -30,6 +32,19 @@ POST /backend/start
 POST /backend/stop
 POST /backend/restart
 ```
+
+There is no generic command-execution endpoint.
+
+## Frontend control panel
+
+The React app mounts `LauncherPanel.tsx`, which uses the fixed launcher API to:
+
+- show launcher/backend/Ollama status;
+- start, stop and restart a launcher-managed backend;
+- read the bounded backend log tail;
+- continue showing the app even when the optional launcher is offline.
+
+This keeps the existing manual-terminal workflow available while providing the control surface required by the Windows local-app path.
 
 ## Defaults
 
@@ -64,16 +79,35 @@ SIALABS_BACKEND_COMMAND=<custom fixed command>
 SIALABS_OLLAMA_URL=http://127.0.0.1:11434
 ```
 
-When `SIALABS_LAUNCHER_TOKEN` is set, POST requests must include:
+When `SIALABS_LAUNCHER_TOKEN` is set, POST requests must additionally include:
 
 ```text
 X-SIALabs-Launcher-Token: <token>
 ```
 
+The token is defense in depth, not the only browser mutation guard.
+
+## Browser mutation guard
+
+State-changing launcher actions reject browser requests when either condition is true:
+
+- the request has an `Origin` outside the explicit local frontend allowlist;
+- the browser reports `Sec-Fetch-Site: cross-site`.
+
+Trusted local frontend origins such as `http://127.0.0.1:4182` remain allowed. Local automation such as the PowerShell startup scripts sends no browser `Origin`/`Sec-Fetch-Site` headers and remains supported.
+
+This protects the localhost control API from ordinary cross-site browser POST/CSRF attempts even when `SIALABS_LAUNCHER_TOKEN` is not configured. When a token is configured, both provenance and token checks apply.
+
 ## Safety boundaries
 
 - The launcher binds to `127.0.0.1` by default.
+- CORS response access is allowlisted to known local frontend origins.
+- Browser mutation requests are checked for trusted local provenance.
+- An optional launcher token can add a second mutation guard.
 - It does not expose a generic command execution endpoint.
 - It only exposes fixed runtime actions.
 - Stop/restart only controls the backend process started by the launcher.
+- Backend log memory is bounded to the most recent 500 lines.
 - Existing manual terminal workflows still work without the launcher.
+
+Do not expose the launcher outside loopback without a separate authentication/network security design.
