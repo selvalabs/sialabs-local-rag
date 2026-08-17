@@ -11,7 +11,9 @@ Validate application behavior locally and in CI without requiring Ollama, a GPU 
 - text normalization and chunking;
 - vector normalization and cosine similarity;
 - provider and service orchestration;
-- local storage behavior.
+- local storage behavior;
+- embedding-index lifecycle and local data retention;
+- deterministic retrieval-quality baseline.
 
 ### API tests
 
@@ -81,9 +83,31 @@ Docker Compose:
 docker compose config
 ```
 
+## Retrieval quality evaluation
+
+The repository includes a fixed corpus, expected evidence and negative/no-answer cases under `backend/evaluation/`.
+
+Deterministic CI-compatible run:
+
+```powershell
+cd backend
+uv run python -m sialabs_local_rag.evaluation --provider hash
+```
+
+Optional real local embedding run:
+
+```powershell
+$env:OLLAMA_EMBED_MODEL = "embeddinggemma"
+uv run python -m sialabs_local_rag.evaluation --provider ollama
+```
+
+The pytest suite recomputes the deterministic hash evaluation and compares it with the recorded baseline. This makes retrieval behavior changes explicit in future PRs.
+
+See [`RETRIEVAL_EVALUATION.md`](RETRIEVAL_EVALUATION.md) for the corpus design, metrics, current baseline and update rules.
+
 ## CI strategy
 
-CI uses deterministic mock/hash providers so validation does not depend on local hardware or downloaded model availability. Real Ollama execution is validated separately through explicit local smoke and end-to-end checks.
+CI uses deterministic mock/hash providers so validation does not depend on local hardware or downloaded model availability. Real Ollama execution is validated separately through explicit local smoke, end-to-end and retrieval-evaluation checks.
 
 The backend CI job runs pytest with coverage and uploads `coverage.xml` as a workflow artifact. Coverage is informational for now and does not fail the build by percentage.
 
@@ -99,6 +123,6 @@ See [`VALIDATION.md`](VALIDATION.md) for the validated model combinations and sc
 
 - No browser-driven end-to-end test suite.
 - No enforced minimum coverage threshold.
-- No retrieval-quality benchmark dataset.
+- The retrieval evaluation corpus is intentionally small and project-specific, not a general benchmark.
 - No load or sustained-latency benchmark.
 - No automated OCR or scanned-PDF test path because OCR is unsupported.
