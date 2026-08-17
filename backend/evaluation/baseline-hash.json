@@ -3,6 +3,7 @@
   "question_version": 1,
   "embedding_provider": "hash",
   "embedding_model": "hash-bow-128",
+  "retrieval_min_score": 0.0,
   "metrics": {
     "total_queries": 8,
     "positive_queries": 7,
