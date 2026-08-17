@@ -52,7 +52,12 @@ def _build_two_page_pdf(first_text: str, second_text: str) -> bytes:
 def test_markdown_upload_returns_section_metadata_in_retrieved_source(
     client: TestClient,
 ) -> None:
-    markdown = b"""# Safety\n\nWear protective equipment during inspection.\n\n# Recovery\n\nUse exact recovery code ZX-81 before restarting the console.\n"""
+    markdown = (
+        "# Safety\n\n"
+        "Wear protective equipment during inspection.\n\n"
+        "# Recovery\n\n"
+        "Use exact recovery code ZX-81 before restarting the console.\n"
+    ).encode("utf-8")
     upload = client.post(
         "/api/documents/upload",
         files={"file": ("manual.md", markdown, "text/markdown")},
