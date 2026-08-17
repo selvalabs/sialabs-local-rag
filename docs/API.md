@@ -121,31 +121,79 @@ deletion as well.
 
 ### `POST /api/chat`
 
-Queries the local document collection.
+Queries the local document collection. The contract separates three concepts:
+
+- `question` is the user's current intent and is preserved as the original chat
+  question;
+- `conversation_context` contains recent dialogue turns and is optional;
+- `retrieval_query` is produced by the backend and returned in the response for
+  evaluation/debugging.
+
+Example follow-up request:
 
 ```json
 {
-  "question": "Which technologies are used by this application?",
+  "question": "What is its notice period?",
+  "conversation_context": [
+    {
+      "role": "user",
+      "content": "Explain the Cedar remote-work policy."
+    },
+    {
+      "role": "assistant",
+      "content": "The previous answer is available as dialogue context."
+    }
+  ],
   "top_k": 5
 }
 ```
+
+Standalone questions use the current question directly as the retrieval query.
+For short/referential follow-ups, the deterministic backend resolver may prepend
+the latest relevant user turn. Assistant-generated history is never copied into
+the embedding query.
+
+Conversation context remains available to the answer-generation prompt for dialogue
+continuity, but it is explicitly labeled as non-evidence. Factual claims must come
+from retrieved document sources; prior assistant text must not be treated as a
+source of truth.
+
+A response includes:
+
+- generated answer;
+- retrieved sources;
+- provider and model metadata;
+- derived `retrieval_query`;
+- retrieval top K;
+- latency in milliseconds.
 
 Before retrieval, the application verifies that the configured embedding
 provider/model matches the persisted index signature. After creating the query
 embedding, the vector dimension is checked as well.
 
-The response includes:
-
-- generated answer;
-- retrieved sources;
-- similarity scores;
-- provider and model metadata;
-- latency in milliseconds.
-
 Retrieved source content is returned to the active client so it can be inspected,
 but it is not duplicated into new backend chat trace metadata. The frontend also
 does not serialize the detailed response/source objects into persistent browser
 chat history.
+
+## Conversational retrieval behavior
+
+The follow-up resolver is intentionally deterministic and cheap. It does not add a
+mandatory second LLM call.
+
+Representative behavior:
+
+- a standalone topic switch such as `Explain Harbor finance reserve requirements.`
+  remains exactly that retrieval query even after a Cedar conversation;
+- a referential follow-up such as `What is its notice period?` can use the latest
+  user question as an anchor;
+- misleading or incorrect assistant-history text is excluded from the retrieval
+  query;
+- if there is no previous user message to resolve a reference, the current question
+  remains standalone rather than guessing an anchor.
+
+This separation prevents generated assistant prose from silently changing what is
+embedded while preserving enough recent dialogue for follow-up continuity.
 
 ## Embedding compatibility and reindexing
 
