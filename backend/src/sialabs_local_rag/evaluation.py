@@ -16,6 +16,7 @@ from sialabs_local_rag.providers import (
     ProviderError,
     create_embedding_provider,
 )
+from sialabs_local_rag.retrieval import RetrievalMode, RetrievalOptions, retrieve_sources
 from sialabs_local_rag.schemas import SourceChunk
 from sialabs_local_rag.settings import Settings
 from sialabs_local_rag.storage import ChunkInput, Storage
@@ -55,6 +56,9 @@ class RetrievedChunkResult(BaseModel):
     document_title: str
     chunk_index: int
     score: float
+    dense_rank: int | None = None
+    lexical_rank: int | None = None
+    fusion_score: float | None = None
 
 
 class QueryEvaluationResult(BaseModel):
@@ -92,6 +96,7 @@ class EvaluationReport(BaseModel):
     question_version: int
     embedding_provider: str
     embedding_model: str
+    retrieval_mode: RetrievalMode
     retrieval_min_score: float
     metrics: EvaluationMetrics
     queries: list[QueryEvaluationResult]
@@ -110,6 +115,9 @@ async def run_evaluation(
     question_set: EvaluationQuestionSet,
     embedding_provider: EmbeddingProvider,
     minimum_score: float = 0.0,
+    retrieval_mode: RetrievalMode = "dense",
+    dense_weight: float = 1.0,
+    lexical_weight: float = 1.2,
 ) -> EvaluationReport:
     with TemporaryDirectory(prefix="sialabs-rag-eval-") as temp_dir:
         database = Database(f"sqlite:///{Path(temp_dir) / 'evaluation.db'}")
@@ -121,10 +129,13 @@ async def run_evaluation(
         for question in question_set.questions:
             results.append(
                 await _evaluate_question(
-                    storage,
-                    question,
-                    embedding_provider,
-                    minimum_score,
+                    storage=storage,
+                    question=question,
+                    embedding_provider=embedding_provider,
+                    minimum_score=minimum_score,
+                    retrieval_mode=retrieval_mode,
+                    dense_weight=dense_weight,
+                    lexical_weight=lexical_weight,
                 )
             )
 
@@ -133,6 +144,7 @@ async def run_evaluation(
         question_version=question_set.version,
         embedding_provider=embedding_provider.name,
         embedding_model=embedding_provider.model,
+        retrieval_mode=retrieval_mode,
         retrieval_min_score=minimum_score,
         metrics=_aggregate_metrics(results),
         queries=results,
@@ -170,14 +182,24 @@ async def _evaluate_question(
     question: EvaluationQuestion,
     embedding_provider: EmbeddingProvider,
     minimum_score: float,
+    retrieval_mode: RetrievalMode,
+    dense_weight: float,
+    lexical_weight: float,
 ) -> QueryEvaluationResult:
     query_embedding = (await embedding_provider.embed([question.question]))[0]
-    sources = storage.search_chunks(
+    sources = retrieve_sources(
+        storage=storage,
+        query_text=question.question,
         query_embedding=query_embedding,
         top_k=question.top_k,
         embedding_provider=embedding_provider.name,
         embedding_model=embedding_provider.model,
-        minimum_score=minimum_score,
+        options=RetrievalOptions(
+            mode=retrieval_mode,
+            minimum_dense_score=minimum_score,
+            dense_weight=dense_weight,
+            lexical_weight=lexical_weight,
+        ),
     )
 
     retrieved_titles = [source.document_title for source in sources]
@@ -214,6 +236,9 @@ async def _evaluate_question(
                 document_title=source.document_title,
                 chunk_index=source.chunk_index,
                 score=source.score,
+                dense_rank=source.dense_rank,
+                lexical_rank=source.lexical_rank,
+                fusion_score=source.fusion_score,
             )
             for source in sources
         ],
@@ -298,7 +323,8 @@ def format_human_report(report: EvaluationReport) -> str:
     metrics = report.metrics
     lines = [
         f"Embedding: {report.embedding_provider}/{report.embedding_model}",
-        f"Minimum score: {report.retrieval_min_score:.4f}",
+        f"Retrieval mode: {report.retrieval_mode}",
+        f"Minimum dense score: {report.retrieval_min_score:.4f}",
         f"Queries: {metrics.total_queries} "
         f"({metrics.positive_queries} positive, {metrics.negative_queries} negative)",
         f"Document hit@1: {metrics.document_hit_at_1:.4f}",
@@ -337,10 +363,16 @@ def build_argument_parser() -> argparse.ArgumentParser:
         help="Embedding provider. Ollama uses OLLAMA_BASE_URL/OLLAMA_EMBED_MODEL settings.",
     )
     parser.add_argument(
+        "--mode",
+        choices=("dense", "hybrid"),
+        default="dense",
+        help="Retrieval mode to evaluate. Dense remains the recorded baseline mode.",
+    )
+    parser.add_argument(
         "--min-score",
         type=float,
         default=0.0,
-        help="Minimum cosine similarity required for a chunk to enter the result set.",
+        help="Minimum cosine similarity required for the dense candidate pool.",
     )
     parser.add_argument(
         "--corpus",
@@ -362,6 +394,7 @@ def build_argument_parser() -> argparse.ArgumentParser:
 
 async def _run_from_args(args: argparse.Namespace) -> EvaluationReport:
     provider_name = cast(Literal["hash", "ollama"], args.provider)
+    retrieval_mode = cast(RetrievalMode, args.mode)
     settings = Settings(embedding_provider=provider_name)
     provider = create_embedding_provider(settings)
     return await run_evaluation(
@@ -369,6 +402,7 @@ async def _run_from_args(args: argparse.Namespace) -> EvaluationReport:
         question_set=load_questions(cast(Path, args.questions)),
         embedding_provider=provider,
         minimum_score=cast(float, args.min_score),
+        retrieval_mode=retrieval_mode,
     )
 
 
