@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
@@ -13,9 +14,11 @@ from sialabs_local_rag.database import Database
 from sialabs_local_rag.ocr import OcrUnavailableError
 from sialabs_local_rag.parsing import (
     DocumentParsingError,
+    ParsedDocument,
     parse_uploaded_document_structured,
 )
 from sialabs_local_rag.providers import EmbeddingProvider, ProviderError
+from sialabs_local_rag.schemas import DocumentResponse
 from sialabs_local_rag.source_metadata import persist_chunk_source_metadata
 from sialabs_local_rag.storage import ChunkInput, Storage
 
@@ -225,11 +228,11 @@ class CollectionScanner:
             orphan_documents_deleted=orphan_documents_deleted,
         )
 
-    async def _index_document(self, title: str, parsed: object):
-        from sialabs_local_rag.parsing import ParsedDocument
-
-        if not isinstance(parsed, ParsedDocument):
-            raise ValueError("Parsed document has an unexpected type.")
+    async def _index_document(
+        self,
+        title: str,
+        parsed: ParsedDocument,
+    ) -> DocumentResponse:
         structured_chunks = chunk_parsed_segments(
             parsed.segments,
             chunk_size=self.chunk_size,
@@ -267,7 +270,7 @@ class CollectionScanner:
         return created
 
     @staticmethod
-    def _iter_supported_files(root: Path):
+    def _iter_supported_files(root: Path) -> Iterator[Path]:
         for path in sorted(root.rglob("*"), key=lambda item: item.as_posix().casefold()):
             if path.is_symlink() or not path.is_file():
                 continue
