@@ -45,6 +45,7 @@ async def test_relevance_gate_returns_insufficient_evidence_without_llm_call(
         database_url=f"sqlite:///{tmp_path / 'service.db'}",
         embedding_provider="hash",
         llm_provider="mock",
+        retrieval_mode="dense",
         retrieval_min_score=0.1,
         chunk_size=300,
         chunk_overlap=0,
