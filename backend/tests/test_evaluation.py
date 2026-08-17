@@ -37,7 +37,7 @@ async def test_hash_evaluation_matches_recorded_baseline() -> None:
 
 
 @pytest.mark.asyncio
-async def test_baseline_exposes_known_multi_chunk_and_no_answer_gaps() -> None:
+async def test_baseline_captures_atlas_improvement_and_remaining_no_answer_gap() -> None:
     report = await run_evaluation(
         load_corpus(_EVALUATION_DIR / "corpus.json"),
         load_questions(_EVALUATION_DIR / "questions.json"),
@@ -47,12 +47,13 @@ async def test_baseline_exposes_known_multi_chunk_and_no_answer_gaps() -> None:
 
     atlas = results["atlas-multi-evidence"]
     assert atlas.document_recall_at_k == 1.0
-    assert atlas.evidence_recall_at_k == 0.5
-    assert atlas.success is False
+    assert atlas.evidence_recall_at_k == 1.0
+    assert atlas.success is True
     assert [source.document_title for source in atlas.retrieved] == [
         "Atlas Reactor Procedure",
-        "Atlas Training Bulletin",
+        "Atlas Reactor Procedure",
     ]
+    assert [source.chunk_index for source in atlas.retrieved] == [0, 1]
 
     negative = results["negative-apollo"]
     assert negative.no_answer_expected is True
