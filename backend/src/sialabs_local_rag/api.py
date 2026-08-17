@@ -312,6 +312,7 @@ async def chat(
     try:
         return await service.answer_question(
             question=payload.question,
+            conversation_context=payload.conversation_context,
             top_k=payload.top_k,
             runtime_options=payload.runtime_options,
         )
