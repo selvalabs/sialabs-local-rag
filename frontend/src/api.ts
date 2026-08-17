@@ -1,5 +1,6 @@
 import type {
   ChatResponse,
+  ConversationContextMessage,
   DocumentListResponse,
   DocumentRecord,
   PublicConfig,
@@ -115,13 +116,19 @@ export async function clearChatHistory(): Promise<void> {
 
 export async function askQuestion(
   question: string,
+  conversationContext: ConversationContextMessage[],
   runtimeOptions?: RuntimeOptions,
   topK?: number,
 ): Promise<ChatResponse> {
   const response = await fetchApi(`${API_URL}/api/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ question, runtime_options: runtimeOptions, top_k: topK }),
+    body: JSON.stringify({
+      question,
+      conversation_context: conversationContext,
+      runtime_options: runtimeOptions,
+      top_k: topK,
+    }),
   })
   return parseJsonResponse<ChatResponse>(response)
 }
