@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import pytest
+
 import sialabs_local_rag.parsing as parsing_module
 from sialabs_local_rag.parsing import (
     parse_markdown_document,
@@ -50,12 +52,17 @@ class _FakeReader:
         ]
 
 
-def test_pdf_parser_preserves_page_numbers(
-    monkeypatch: object,
-) -> None:
-    class _Patch:
-        def setattr(self, target: object, name: str, value: object) -> None:
-            setattr(target, name, value)
+def test_pdf_parser_preserves_page_numbers(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(parsing_module, "PdfReader", lambda _: _FakeReader())
 
-    patch = monkeypatch
-    assert isinstance(patch, _Patch) is False
+    document = parse_uploaded_document_structured("manual.pdf", b"fake-pdf")
+
+    assert [segment.page_number for segment in document.segments] == [1, 2]
+    assert [segment.source_locator for segment in document.segments] == [
+        "page:1",
+        "page:2",
+    ]
+    assert document.segments[0].content == "Page one contains the Alpha procedure."
+    assert document.segments[1].content == "Page two contains the Beta recovery code."
+    assert "Page one" in document.content
+    assert "Page two" in document.content
