@@ -6,6 +6,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from hashlib import sha256
+from typing import cast
 from uuid import uuid4
 
 from sialabs_local_rag.chunking import estimate_tokens
@@ -441,13 +442,16 @@ class Storage:
 
     @staticmethod
     def _embedding_index_row(connection: sqlite3.Connection) -> sqlite3.Row | None:
-        return connection.execute(
-            """
-            SELECT provider, model, dimension, created_at, updated_at
-            FROM embedding_index
-            WHERE singleton = 1
-            """
-        ).fetchone()
+        return cast(
+            sqlite3.Row | None,
+            connection.execute(
+                """
+                SELECT provider, model, dimension, created_at, updated_at
+                FROM embedding_index
+                WHERE singleton = 1
+                """
+            ).fetchone(),
+        )
 
     @staticmethod
     def _count_documents(connection: sqlite3.Connection) -> int:
