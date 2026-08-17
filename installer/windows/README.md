@@ -1,21 +1,28 @@
 # Windows one-click app flow
 
-This is the existing Windows local-app/shortcut flow for SIALabs Local RAG, tracked by #49.
+This is the Windows local-app/shortcut MVP tracked by #49.
 
-It does not yet produce a signed `.exe` installer. Instead, it provides the Windows startup and shortcut behavior that a future installer can wrap.
+## MVP status
+
+The **script + desktop shortcut MVP is complete**: one setup command prepares the local app, and the daily-use shortcut starts the launcher/backend/frontend flow and opens the app.
+
+This milestone intentionally does **not** claim to provide a signed standalone `.exe` installer. A future native installer can wrap the validated runtime path below without creating a second startup architecture.
 
 For **distribution/release work**, this document does not replace the quality gate. Before preparing a commit for distribution, follow [`../../docs/RELEASE_READINESS.md`](../../docs/RELEASE_READINESS.md) and the artifact flow in [`../../docs/INSTALLERS.md`](../../docs/INSTALLERS.md).
 
 ## What the current flow does
 
-- Prepares the backend environment with `uv sync`.
+- Fails early when required Python/uv/npm tooling is unavailable.
+- Prepares the backend environment with `uv sync` and rejects a non-zero dependency-sync result.
 - Installs frontend dependencies when needed.
-- Builds `frontend/dist`.
+- Builds `frontend/dist` and verifies that the production build exists.
+- If `-SkipFrontendBuild` is used, requires an existing production build rather than completing with a broken shortcut.
 - Creates a desktop shortcut named `SIALabs Local RAG`.
 - The shortcut starts the local launcher.
 - The launcher starts the backend.
 - A static local frontend server starts on `127.0.0.1:4182`.
 - The browser opens the app URL.
+- The mounted launcher panel can inspect launcher/backend/Ollama status, control the managed backend and show its bounded log tail.
 
 ## External dependencies for now
 
@@ -39,7 +46,17 @@ From the repository root:
 .\scripts\install-windows-app.ps1
 ```
 
-This builds the frontend and creates the desktop shortcut. It is useful for local setup and development validation.
+This synchronizes the backend environment, builds the frontend and creates the desktop shortcut.
+
+Optional preparation flags:
+
+```powershell
+# Reuse an already-built frontend/dist. The command fails if the build is missing.
+.\scripts\install-windows-app.ps1 -SkipFrontendBuild
+
+# Prepare dependencies/build without creating a shortcut.
+.\scripts\install-windows-app.ps1 -NoShortcut
+```
 
 Running this setup command by itself is **not** a production release qualification.
 
@@ -63,7 +80,7 @@ Use either the desktop shortcut or run:
 .\scripts\start-local-app.ps1
 ```
 
-The script starts:
+The script starts or verifies:
 
 ```text
 http://127.0.0.1:8765  launcher
@@ -77,14 +94,17 @@ Then it opens:
 http://127.0.0.1:4182
 ```
 
-## Future installer
+The launcher remains optional for the broader project: developers can still run the backend/frontend manually. The Windows shortcut path deliberately uses it so users do not need multiple terminal windows.
 
-A future `.exe` installer should reuse this flow rather than create a competing runtime path:
+## Future native installer
 
-1. install app files into a local app directory;
+A future `.exe`/`.msi` installer should reuse this completed MVP flow rather than create a competing runtime path:
+
+1. install app files into an application directory;
 2. run setup/build steps or include prebuilt artifacts;
-3. create the desktop/start-menu shortcut;
+3. create desktop/start-menu shortcuts;
 4. optionally register the launcher as a background service/startup process;
-5. detect Ollama/model availability and guide model installation.
+5. detect Ollama/model availability and guide model installation;
+6. add signing/uninstall/update behavior appropriate to a native package.
 
-Native installer implementation remains outside the release-gating work in #61.
+Those items are a later native-packaging milestone, not unfinished acceptance criteria for the #49 script/shortcut MVP.
