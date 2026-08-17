@@ -209,7 +209,12 @@ def _ensure_optional_fts_schema(connection: sqlite3.Connection) -> None:
             INSERT INTO chunks_fts (
                 chunk_id, document_id, document_title, chunk_index, content
             )
-            SELECT chunks.id, chunks.document_id, documents.title, chunks.chunk_index, chunks.content
+            SELECT
+                chunks.id,
+                chunks.document_id,
+                documents.title,
+                chunks.chunk_index,
+                chunks.content
             FROM chunks
             JOIN documents ON documents.id = chunks.document_id
             """
