@@ -4,9 +4,11 @@ This document defines the packaging flow for installable or distributable artifa
 
 It is intentionally outside the runtime application. The app can keep evolving through normal feature branches, while artifacts are built only after a version is considered stable enough to package.
 
+Release quality requirements are defined in [`RELEASE_READINESS.md`](RELEASE_READINESS.md). Packaging must not bypass that gate.
+
 ## Golden rule
 
-Build installable artifacts from a clean version tag, not from a loose feature branch.
+Build installable artifacts from a clean, synchronized and validated `main` commit with the intended version tag. Do not package a loose feature branch or bypass a failed knowledge-engine evaluation.
 
 Recommended sequence:
 
@@ -14,12 +16,12 @@ Recommended sequence:
 feature branch
   -> pull request
   -> CI
-  -> manual validation
   -> merge to main
-  -> clean main
-  -> version tag
-  -> release preflight
+  -> clean + synchronized main
+  -> version tag on intended commit
+  -> release preflight + deterministic RAG evaluation
   -> package artifacts
+  -> manual artifact smoke test
   -> GitHub Release
 ~~~
 
@@ -28,6 +30,7 @@ feature branch
 | Stage | Artifact | Status |
 | --- | --- | --- |
 | PWA | Static frontend app shell archive | Supported by this flow |
+| Windows local app | Launcher/backend/frontend shortcut flow | Existing path tracked by #49 |
 | Desktop | Tauri desktop installer | Planned under #37 |
 | Mobile | Local-network companion app | Planned under #38 |
 | Model runtime | Ollama and model files | External dependency, not bundled |
@@ -46,6 +49,12 @@ It does not contain:
 - model files
 
 The service worker is expected to cache static frontend assets only. It must not cache API responses or private document data.
+
+## Windows local-app flow
+
+The existing one-click/shortcut-oriented Windows setup is tracked in #49 and documented in [`../installer/windows/README.md`](../installer/windows/README.md).
+
+That flow remains the source of truth for its app preparation and shortcut behavior. The release-quality gate in this document and `RELEASE_READINESS.md` determines **when a validated commit is eligible to be distributed**; it does not replace the Windows packaging implementation.
 
 ## Native desktop artifacts
 
@@ -79,23 +88,31 @@ Release candidates can use:
 v0.4.0-rc.1
 ~~~
 
+For a production release preflight, the version tag must exist and point to the exact validated `HEAD` commit.
+
 ## Local preflight
 
 Run from the repository root:
 
 ~~~powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\release-preflight.ps1 -Version v0.3.0 -BuildPwaArchive
+powershell -ExecutionPolicy Bypass -File .\scripts\release-preflight.ps1 -Version v0.4.0 -BuildPwaArchive
 ~~~
 
-The preflight should:
+The preflight:
 
-- refuse to run from a dirty git working tree
-- require `main` by default
-- run the existing local validation suite
-- build the frontend
-- optionally create a PWA archive under `dist/release/<version>/`
+- refuses to package from a dirty git working tree;
+- requires `main` by default;
+- fetches and verifies that local `main` matches `origin/main` before artifact creation;
+- verifies that the supplied version tag points to `HEAD`;
+- runs the existing local lint/test/typecheck/build validation suite;
+- runs deterministic dense RAG evaluation with the hash provider;
+- runs deterministic hybrid RAG evaluation with the hash provider;
+- verifies the working tree is still clean after validation/build steps;
+- optionally creates a PWA archive under `dist/release/<version>/`.
 
-Use `-AllowNonMain` only for dry runs on packaging branches.
+Use `-AllowNonMain` only for intentional packaging dry runs. It is not sufficient evidence for a production release.
+
+See [`RELEASE_READINESS.md`](RELEASE_READINESS.md) for the complete core-quality and manual release checklist.
 
 ## Output convention
 
@@ -110,28 +127,30 @@ This directory is ignored by git through the existing `dist/` ignore rule.
 Example:
 
 ~~~text
-dist/release/v0.3.0/sialabs-local-rag-pwa-v0.3.0.zip
+dist/release/v0.4.0/sialabs-local-rag-pwa-v0.4.0.zip
 ~~~
 
 ## Validation checklist before packaging
 
-- `main` is clean and synced with `origin/main`.
+- `main` is clean and synchronized with `origin/main`.
 - Release tag exists and points to the intended commit.
 - CI passed for the intended commit.
 - Local validation suite passed.
+- Dense and hybrid deterministic RAG evaluations passed.
 - PWA install behavior was manually tested when relevant.
+- Windows local-app startup/shortcut behavior was manually tested when relevant.
 - Backend unavailable state was manually tested when relevant.
-- No private document, database or chat data is included in artifacts.
+- No private document, database, chat, environment secret or model data is included in artifacts.
 
 ## GitHub Release checklist
 
 For each release:
 
 - attach generated artifacts
-- mention the source tag
+- mention the source tag and commit
 - mention what was validated
 - mention known limitations
-- mention whether the artifact is PWA-only or native desktop
+- mention whether the artifact is PWA-only, Windows local-app flow or a future native desktop artifact
 
 ## Security boundary
 
