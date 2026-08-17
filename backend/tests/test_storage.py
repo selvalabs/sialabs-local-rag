@@ -13,7 +13,7 @@ from sialabs_local_rag.storage import (
 )
 
 
-def test_search_chunks_diversifies_top_sources_by_document(tmp_path: Path) -> None:
+def test_search_chunks_prefers_multiple_stronger_chunks_from_same_document(tmp_path: Path) -> None:
     database = Database(f"sqlite:///{tmp_path / 'test.db'}")
     database.init_schema()
     storage = Storage(database)
@@ -24,17 +24,17 @@ def test_search_chunks_diversifies_top_sources_by_document(tmp_path: Path) -> No
         original_content="Dominant document content with several similar chunks.",
         chunks=[
             ChunkInput(index=0, content="dominant chunk 0", embedding=[1.0, 0.0]),
-            ChunkInput(index=1, content="dominant chunk 1", embedding=[0.99, 0.0]),
-            ChunkInput(index=2, content="dominant chunk 2", embedding=[0.98, 0.0]),
+            ChunkInput(index=1, content="dominant chunk 1", embedding=[0.9, 0.1]),
+            ChunkInput(index=2, content="dominant chunk 2", embedding=[0.8, 0.2]),
         ],
         embedding_provider="test",
         embedding_model="test-model",
     )
-    second_document = storage.create_document(
+    storage.create_document(
         title="Secondary document",
         source_type="manual",
         original_content="Secondary document content with one less similar chunk.",
-        chunks=[ChunkInput(index=0, content="secondary chunk", embedding=[0.5, 0.0])],
+        chunks=[ChunkInput(index=0, content="secondary chunk", embedding=[0.5, 0.5])],
         embedding_provider="test",
         embedding_model="test-model",
     )
@@ -45,11 +45,67 @@ def test_search_chunks_diversifies_top_sources_by_document(tmp_path: Path) -> No
         embedding_provider="test",
         embedding_model="test-model",
     )
-    document_ids = [source.document_id for source in sources]
 
-    assert document_ids[0] == first_document.id
-    assert second_document.id in document_ids
-    assert len(sources) == 3
+    assert [source.document_id for source in sources] == [first_document.id] * 3
+    assert [source.chunk_index for source in sources] == [0, 1, 2]
+    assert [source.score for source in sources] == sorted(
+        [source.score for source in sources], reverse=True
+    )
+
+
+def test_search_chunks_applies_minimum_score_and_can_return_fewer_than_top_k(tmp_path: Path) -> None:
+    database = Database(f"sqlite:///{tmp_path / 'threshold.db'}")
+    database.init_schema()
+    storage = Storage(database)
+
+    storage.create_document(
+        title="Threshold document",
+        source_type="manual",
+        original_content="Threshold document with strong and weak evidence chunks.",
+        chunks=[
+            ChunkInput(index=0, content="strong", embedding=[1.0, 0.0]),
+            ChunkInput(index=1, content="medium", embedding=[0.8, 0.6]),
+            ChunkInput(index=2, content="weak", embedding=[0.2, 0.98]),
+        ],
+        embedding_provider="test",
+        embedding_model="test-model",
+    )
+
+    sources = storage.search_chunks(
+        query_embedding=[1.0, 0.0],
+        top_k=5,
+        embedding_provider="test",
+        embedding_model="test-model",
+        minimum_score=0.75,
+    )
+
+    assert [source.chunk_index for source in sources] == [0, 1]
+    assert len(sources) < 5
+
+
+def test_search_chunks_can_reject_all_candidates_below_threshold(tmp_path: Path) -> None:
+    database = Database(f"sqlite:///{tmp_path / 'no-evidence.db'}")
+    database.init_schema()
+    storage = Storage(database)
+
+    storage.create_document(
+        title="Unrelated document",
+        source_type="manual",
+        original_content="Document whose vector is orthogonal to the query.",
+        chunks=[ChunkInput(index=0, content="unrelated", embedding=[0.0, 1.0])],
+        embedding_provider="test",
+        embedding_model="test-model",
+    )
+
+    sources = storage.search_chunks(
+        query_embedding=[1.0, 0.0],
+        top_k=3,
+        embedding_provider="test",
+        embedding_model="test-model",
+        minimum_score=0.1,
+    )
+
+    assert sources == []
 
 
 def test_embedding_index_rejects_different_model_while_chunks_exist(tmp_path: Path) -> None:
