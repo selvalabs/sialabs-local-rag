@@ -2,96 +2,109 @@
 
 ## Local-first principle
 
-Document content remains in the user's local environment by default. The application does not require an external LLM API for its primary local AI path.
+Document content remains in the user's local environment by default. The primary
+application path does not require an external LLM, embedding API, Office parser or
+OCR service.
 
 ## Persisted data
 
-The local SQLite database stores:
+The local SQLite database stores document metadata, extracted text chunks,
+embeddings, lightweight source-location metadata and local chat traces.
 
-- document metadata;
-- text chunks;
-- embeddings serialized as JSON;
-- chat questions and answers used for local traceability;
-- lightweight source references for chat traces, such as document/chunk identifiers and scores.
+Source metadata can include page, section, slide, sheet and cell-range locators.
+New chat trace metadata does **not** duplicate retrieved chunk text. The browser
+persists only lightweight conversation messages, not detailed retrieved-source
+objects.
 
-New chat trace metadata does **not** duplicate the retrieved chunk text. Schema migration version 3 removes the `content` field from source metadata persisted by older versions while preserving lightweight source identifiers.
-
-The browser keeps conversational continuity in `localStorage`, but persists only message `id`, `role` and displayed message text. Detailed `ChatResponse` objects and retrieved source excerpts are kept in memory for the current browser session and are not serialized into the persistent chat-history key.
-
-Anyone with access to the SQLite database file or the user's browser profile may be able to read the remaining locally persisted content. SQLite storage is not encrypted by the application.
+Anyone with access to the SQLite database or browser profile may be able to read
+remaining locally persisted content. SQLite storage is not encrypted by the app.
 
 ## Deletion semantics
 
-Deletion behavior is intentionally explicit:
+- **Clear chat** removes backend traces and browser chat history.
+- **Delete document** removes the document/chunks and clears backend chat traces.
+- **Reset embedding index** removes indexed documents/chunks, embedding signature
+  and backend chat traces.
+- **Full local data reset** removes documents, chunks, embedding signature and
+  backend chat traces.
 
-- **Clear chat** (`DELETE /api/chat/history`) removes persisted backend chat traces. The frontend Clear chat action also removes the browser chat history.
-- **Delete document** removes the document and its chunks through SQLite cascade behavior and clears persisted backend chat traces, because generated answers may contain facts derived from the deleted document. The frontend also clears its local conversation state after a successful document deletion.
-- **Reset embedding index** removes indexed documents/chunks, clears the embedding signature and clears backend chat traces.
-- **Full local data reset** (`DELETE /api/local-data`) removes documents, chunks, the embedding-index signature and backend chat traces.
-
-If the backend is unavailable while the user presses Clear chat, the frontend still removes its local browser history and reports the backend error. Backend traces then remain until the clear operation succeeds or the local database is reset/deleted.
-
-### Guarded full local reset
-
-The full local-data reset endpoint is intentionally harder to invoke than normal deletion operations:
-
-- it accepts requests only from a loopback client (`127.0.0.1` or `::1` in normal runtime);
-- it requires the explicit header `X-Confirm-Local-Data-Reset: delete-all`;
-- it is not exposed as a routine UI action.
-
-This is defense in depth for a destructive local operation, not a substitute for authentication if the API is exposed beyond localhost.
+The destructive full-reset endpoint accepts loopback clients only in normal runtime
+and requires `X-Confirm-Local-Data-Reset: delete-all`.
 
 ## Public repository safety
 
-The public repository is intended to include source code, documentation, deterministic demo fixtures and configuration examples only.
-
-It should not include:
-
-- real user documents;
-- local SQLite databases;
-- generated uploads;
-- real `.env` files;
-- API keys, tokens or credentials;
-- downloaded Ollama model files;
-- local release artifacts or installer output.
-
-Ollama models are external local dependencies and are not bundled in the repository.
-
-## Data that must not be committed
-
-- real `.env` files;
-- tokens or API keys;
-- customer or personal documents;
-- database dumps containing private content;
-- downloaded model files;
-- generated uploads or local runtime artifacts.
+The repository may contain source code, deterministic generated test fixtures,
+document-format XML fixtures and configuration examples. It must not contain real
+user/customer documents, local databases, credentials, downloaded models or local
+OCR output from private documents.
 
 ## Security boundary
 
-The current application is designed for trusted local use. It does not provide:
+The application is designed for trusted local use. It does not provide built-in
+multi-user authentication, per-user authorization, encrypted database storage,
+tenant isolation or hardened public-deployment defaults.
 
-- authentication;
-- per-user authorization;
-- encrypted local database storage;
-- tenant or workspace isolation;
-- user-specific retention policies;
-- hardened public deployment defaults.
+Do not expose the backend, launcher or Ollama directly to the public internet
+without authentication, network controls and a deployment-specific security
+review.
 
-The launcher, frontend and backend flows are intended to run on `localhost` or `127.0.0.1`. Do not expose the application, launcher, backend API or Ollama directly to the public internet without authentication, network controls and a deployment-specific security review.
+## File handling and untrusted documents
 
-## File handling limitations
+Uploaded content is untrusted data. Supported file extensions are allow-listed and
+the backend enforces a 10 MB request limit.
 
-- Upload size is limited by the backend.
-- Supported extensions are explicitly allow-listed.
-- PDFs are processed only for extractable text.
-- OCR, image extraction and complex table reconstruction are not supported.
-- Uploaded content and retrieved text must be treated as untrusted data when constructing model prompts.
+### OOXML Office packages
+
+DOCX, PPTX and XLSX are ZIP-based OOXML packages and are parsed locally with the
+Python standard library. The parsers read XML parts directly and do not execute
+macros or embedded code.
+
+To reduce resource-exhaustion risk from compressed packages, the parsers enforce
+bounds including:
+
+- at most 5,000 ZIP entries;
+- at most 50 MB total uncompressed package data;
+- at most 20,000 DOCX paragraphs;
+- at most 200 PPTX slides;
+- at most 100 XLSX sheets;
+- at most 50,000 non-empty XLSX cells.
+
+Complex embedded objects, macros, arbitrary package relationships and pixel-perfect
+Office rendering are not executed or reproduced.
+
+### PDF and OCR
+
+Selectable PDF text is extracted locally with the base dependency path. Text PDFs
+are limited to 100 pages per upload.
+
+If a valid PDF contains no selectable text, the application may use the optional
+local OCR capability. Image uploads also require this optional capability. OCR is
+**never silently sent to a cloud service**.
+
+Optional OCR requires local Python packages from `backend/requirements-ocr.txt`
+and a local Tesseract executable. Scanned-PDF OCR is limited to 50 pages. OCR text
+is then processed through the same local chunk/index pipeline as other extracted
+text.
+
+If OCR dependencies or Tesseract are unavailable, the API returns an actionable
+error instead of falling back to a remote provider.
+
+OCR is inherently imperfect. Extracted OCR text must be treated as untrusted and
+potentially inaccurate input, especially before using it for high-stakes decisions.
+
+## Prompt/data boundary
+
+Retrieved text and conversation content are data, not instructions with higher
+privilege than the application's system policy. Conversation history is explicitly
+labeled as non-evidence; factual claims should be grounded in retrieved sources.
 
 ## Recommended hardening for broader deployment
 
 - Place the application behind an authenticated reverse proxy.
 - Add authorization for document and administrative endpoints.
-- Add request rate limits and structured audit logs.
+- Add rate limits and structured audit logs.
 - Define backup, deletion and retention procedures.
 - Encrypt sensitive storage where required.
-- Add automated secret scanning and dependency monitoring.
+- Add dependency/secret scanning.
+- Consider sandboxing or process isolation for hostile document-processing
+  workloads before accepting uploads from untrusted remote users.
