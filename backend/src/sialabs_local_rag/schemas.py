@@ -51,9 +51,6 @@ class PublicConfigResponse(BaseModel):
     embedding_model: str
     retrieval_top_k: int
     retrieval_min_score: float
-    retrieval_mode: Literal["dense", "hybrid"]
-    retrieval_dense_weight: float
-    retrieval_lexical_weight: float
     chunk_size: int
     chunk_overlap: int
 
