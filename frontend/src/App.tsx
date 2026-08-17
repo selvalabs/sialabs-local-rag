@@ -3,6 +3,7 @@ import type { FormEvent, KeyboardEvent } from 'react'
 
 import {
   askQuestion,
+  clearChatHistory,
   createDocument,
   deleteDocument,
   getConfig,
@@ -287,7 +288,9 @@ function readPersistedChatMessages(): ChatMessage[] {
     const parsed = JSON.parse(storedMessages) as unknown
     if (!Array.isArray(parsed)) return []
 
-    return parsed.filter(isChatMessage)
+    return parsed
+      .filter(isChatMessage)
+      .map(({ id, role, content }) => ({ id, role, content }))
   } catch {
     return []
   }
@@ -426,7 +429,8 @@ function App() {
         window.localStorage.removeItem(CHAT_HISTORY_STORAGE_KEY)
         return
       }
-      window.localStorage.setItem(CHAT_HISTORY_STORAGE_KEY, JSON.stringify(chatMessages))
+      const persistedMessages = chatMessages.map(({ id, role, content }) => ({ id, role, content }))
+      window.localStorage.setItem(CHAT_HISTORY_STORAGE_KEY, JSON.stringify(persistedMessages))
     } catch {
       // Local storage can be unavailable in restricted browser contexts.
     }
@@ -594,11 +598,23 @@ function App() {
     void submitQuestion()
   }
 
+  async function handleClearChat() {
+    setError(null)
+    try {
+      await clearChatHistory()
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : (t.chatError as string))
+    } finally {
+      setChatMessages([])
+    }
+  }
+
   async function handleDeleteDocument(documentId: string) {
     setIsLoading(true)
     setError(null)
     try {
       await deleteDocument(documentId)
+      setChatMessages([])
       await refreshDocuments()
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : (t.deleteError as string))
@@ -771,7 +787,7 @@ function App() {
               </p>
             </div>
             {hasChatMessages && (
-              <button className="ghost" onClick={() => setChatMessages([])} type="button">
+              <button className="ghost" onClick={() => void handleClearChat()} type="button">
                 {t.clearChat as string}
               </button>
             )}
