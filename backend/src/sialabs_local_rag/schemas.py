@@ -112,6 +112,9 @@ class SourceChunk(BaseModel):
     content: str
     page_number: int | None = None
     section_title: str | None = None
+    slide_number: int | None = None
+    sheet_name: str | None = None
+    cell_range: str | None = None
     source_locator: str | None = None
     dense_score: float | None = None
     dense_rank: int | None = None
