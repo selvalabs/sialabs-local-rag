@@ -16,6 +16,8 @@ from sialabs_local_rag.schemas import (
     DocumentCreate,
     DocumentListResponse,
     DocumentResponse,
+    IndexResetResponse,
+    IndexStatusResponse,
     PublicConfigResponse,
     RuntimeConfigResponse,
     RuntimeOptions,
@@ -24,7 +26,11 @@ from sialabs_local_rag.schemas import (
 )
 from sialabs_local_rag.service import EmptyDocumentError, RagService
 from sialabs_local_rag.settings import Settings
-from sialabs_local_rag.storage import DuplicateDocumentError, Storage
+from sialabs_local_rag.storage import (
+    DuplicateDocumentError,
+    EmbeddingIndexCompatibilityError,
+    Storage,
+)
 
 MAX_UPLOAD_BYTES = 1_000_000
 
@@ -129,6 +135,20 @@ async def test_runtime(
     )
 
 
+@api_router.get("/index/status", response_model=IndexStatusResponse)
+def get_index_status(
+    service: Annotated[RagService, Depends(get_rag_service)],
+) -> IndexStatusResponse:
+    return service.get_index_status()
+
+
+@api_router.delete("/index", response_model=IndexResetResponse)
+def reset_index(
+    service: Annotated[RagService, Depends(get_rag_service)],
+) -> IndexResetResponse:
+    return service.reset_index()
+
+
 @api_router.post(
     "/documents",
     response_model=DocumentResponse,
@@ -145,6 +165,8 @@ async def create_document(
             source_type=payload.source_type,
         )
     except DuplicateDocumentError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except EmbeddingIndexCompatibilityError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except EmptyDocumentError as exc:
         raise HTTPException(
@@ -198,6 +220,8 @@ async def upload_document(
         )
     except DuplicateDocumentError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except EmbeddingIndexCompatibilityError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except EmptyDocumentError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -233,6 +257,8 @@ async def chat(
             top_k=payload.top_k,
             runtime_options=payload.runtime_options,
         )
+    except EmbeddingIndexCompatibilityError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except ProviderError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

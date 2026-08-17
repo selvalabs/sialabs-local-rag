@@ -13,6 +13,8 @@ from sialabs_local_rag.providers import (
 from sialabs_local_rag.schemas import (
     ChatResponse,
     DocumentResponse,
+    IndexResetResponse,
+    IndexStatusResponse,
     RuntimeOptions,
     RuntimeTestResponse,
 )
@@ -54,6 +56,10 @@ class RagService:
         if not chunks:
             raise EmptyDocumentError("Document content did not produce any chunks.")
 
+        self.storage.assert_embedding_compatible(
+            provider=self.embedding_provider.name,
+            model=self.embedding_provider.model,
+        )
         embeddings = await self.embedding_provider.embed(chunks)
         chunk_inputs = [
             ChunkInput(index=index, content=chunk, embedding=embeddings[index])
@@ -64,6 +70,8 @@ class RagService:
             source_type=source_type.strip(),
             original_content=content,
             chunks=chunk_inputs,
+            embedding_provider=self.embedding_provider.name,
+            embedding_model=self.embedding_provider.model,
         )
 
     async def answer_question(
@@ -77,8 +85,17 @@ class RagService:
             runtime_options,
             default_top_k=self.settings.retrieval_top_k,
         )
+        self.storage.assert_embedding_compatible(
+            provider=self.embedding_provider.name,
+            model=self.embedding_provider.model,
+        )
         query_embedding = (await self.embedding_provider.embed([question]))[0]
-        sources = self.storage.search_chunks(query_embedding=query_embedding, top_k=selected_top_k)
+        sources = self.storage.search_chunks(
+            query_embedding=query_embedding,
+            top_k=selected_top_k,
+            embedding_provider=self.embedding_provider.name,
+            embedding_model=self.embedding_provider.model,
+        )
         provider_runtime_options = to_provider_runtime_options(runtime_options)
 
         if not sources:
@@ -110,6 +127,15 @@ class RagService:
             retrieval_top_k=selected_top_k,
             latency_ms=latency_ms,
         )
+
+    def get_index_status(self) -> IndexStatusResponse:
+        return self.storage.get_embedding_index_status(
+            configured_provider=self.embedding_provider.name,
+            configured_model=self.embedding_provider.model,
+        )
+
+    def reset_index(self) -> IndexResetResponse:
+        return self.storage.reset_embedding_index()
 
     async def test_runtime(
         self,

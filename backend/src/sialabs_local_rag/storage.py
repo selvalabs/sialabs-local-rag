@@ -10,7 +10,12 @@ from uuid import uuid4
 
 from sialabs_local_rag.chunking import estimate_tokens
 from sialabs_local_rag.database import Database
-from sialabs_local_rag.schemas import DocumentResponse, SourceChunk
+from sialabs_local_rag.schemas import (
+    DocumentResponse,
+    IndexResetResponse,
+    IndexStatusResponse,
+    SourceChunk,
+)
 from sialabs_local_rag.vector_math import cosine_similarity
 
 
@@ -39,6 +44,14 @@ class DuplicateDocumentError(RuntimeError):
     """Raised when a document with the same content already exists."""
 
 
+class EmbeddingIndexCompatibilityError(RuntimeError):
+    """Raised when configured embeddings do not match the persisted vector space."""
+
+
+class EmbeddingIndexReindexRequiredError(EmbeddingIndexCompatibilityError):
+    """Raised when an existing index cannot be proven compatible and must be rebuilt."""
+
+
 class Storage:
     """SQLite persistence layer for documents, chunks and chat traces."""
 
@@ -51,13 +64,34 @@ class Storage:
         source_type: str,
         original_content: str,
         chunks: Sequence[ChunkInput],
+        embedding_provider: str,
+        embedding_model: str,
     ) -> DocumentResponse:
+        dimensions = {len(chunk.embedding) for chunk in chunks}
+        if not dimensions or 0 in dimensions:
+            raise EmbeddingIndexCompatibilityError(
+                "Embedding provider returned an empty vector. The document was not indexed."
+            )
+        if len(dimensions) != 1:
+            raise EmbeddingIndexCompatibilityError(
+                "Embedding provider returned inconsistent vector dimensions. "
+                "The document was not indexed."
+            )
+
+        embedding_dimension = dimensions.pop()
         document_id = str(uuid4())
         now = utc_now_iso()
         digest = content_digest(original_content)
 
         try:
             with self.database.connect() as connection:
+                self._ensure_embedding_index_for_write(
+                    connection=connection,
+                    provider=embedding_provider,
+                    model=embedding_model,
+                    dimension=embedding_dimension,
+                    now=now,
+                )
                 connection.execute(
                     """
                     INSERT INTO documents (
@@ -99,9 +133,11 @@ class Storage:
                     ],
                 )
         except sqlite3.IntegrityError as exc:
-            raise DuplicateDocumentError(
-                "A document with the same content already exists."
-            ) from exc
+            if "documents.content_hash" in str(exc):
+                raise DuplicateDocumentError(
+                    "A document with the same content already exists."
+                ) from exc
+            raise
 
         return DocumentResponse(
             id=document_id,
@@ -130,8 +166,54 @@ class Storage:
             cursor = connection.execute("DELETE FROM documents WHERE id = ?", (document_id,))
             return cursor.rowcount > 0
 
-    def search_chunks(self, query_embedding: Sequence[float], top_k: int) -> list[SourceChunk]:
+    def assert_embedding_compatible(self, provider: str, model: str) -> None:
+        """Reject legacy or provider/model mismatches before an embedding request is made."""
+
         with self.database.connect() as connection:
+            chunk_count = self._count_chunks(connection)
+            if chunk_count == 0:
+                return
+
+            row = self._embedding_index_row(connection)
+            if row is None:
+                raise EmbeddingIndexReindexRequiredError(
+                    "Existing indexed chunks predate embedding metadata, so their vector space "
+                    "cannot be proven compatible. Call DELETE /api/index, then re-ingest the "
+                    "documents with the current embedding configuration."
+                )
+            self._validate_embedding_index(
+                row=row,
+                provider=provider,
+                model=model,
+                dimension=None,
+            )
+
+    def search_chunks(
+        self,
+        query_embedding: Sequence[float],
+        top_k: int,
+        embedding_provider: str,
+        embedding_model: str,
+    ) -> list[SourceChunk]:
+        with self.database.connect() as connection:
+            chunk_count = self._count_chunks(connection)
+            if chunk_count == 0:
+                return []
+
+            row = self._embedding_index_row(connection)
+            if row is None:
+                raise EmbeddingIndexReindexRequiredError(
+                    "Existing indexed chunks predate embedding metadata, so their vector space "
+                    "cannot be proven compatible. Call DELETE /api/index, then re-ingest the "
+                    "documents with the current embedding configuration."
+                )
+            self._validate_embedding_index(
+                row=row,
+                provider=embedding_provider,
+                model=embedding_model,
+                dimension=len(query_embedding),
+            )
+
             rows = connection.execute(
                 """
                 SELECT
@@ -163,6 +245,88 @@ class Storage:
 
         ranked = sorted(scored, key=lambda item: item.score, reverse=True)
         return self._diversify_sources_by_document(ranked, top_k)
+
+    def get_embedding_index_status(
+        self,
+        configured_provider: str,
+        configured_model: str,
+    ) -> IndexStatusResponse:
+        with self.database.connect() as connection:
+            document_count = self._count_documents(connection)
+            chunk_count = self._count_chunks(connection)
+            row = self._embedding_index_row(connection)
+
+        stored_provider = str(row["provider"]) if row is not None else None
+        stored_model = str(row["model"]) if row is not None else None
+        stored_dimension = int(row["dimension"]) if row is not None else None
+
+        if chunk_count == 0:
+            return IndexStatusResponse(
+                state="empty",
+                configured_provider=configured_provider,
+                configured_model=configured_model,
+                stored_provider=stored_provider,
+                stored_model=stored_model,
+                stored_dimension=stored_dimension,
+                document_count=document_count,
+                chunk_count=chunk_count,
+                reindex_required=False,
+            )
+
+        if row is None:
+            return IndexStatusResponse(
+                state="legacy",
+                configured_provider=configured_provider,
+                configured_model=configured_model,
+                document_count=document_count,
+                chunk_count=chunk_count,
+                reindex_required=True,
+                reason=(
+                    "Indexed chunks exist without embedding metadata. "
+                    "Reset the index and re-ingest documents."
+                ),
+            )
+
+        if stored_provider != configured_provider or stored_model != configured_model:
+            return IndexStatusResponse(
+                state="incompatible",
+                configured_provider=configured_provider,
+                configured_model=configured_model,
+                stored_provider=stored_provider,
+                stored_model=stored_model,
+                stored_dimension=stored_dimension,
+                document_count=document_count,
+                chunk_count=chunk_count,
+                reindex_required=True,
+                reason=(
+                    "The configured embedding provider/model does not match the persisted index. "
+                    "Reset the index and re-ingest documents."
+                ),
+            )
+
+        return IndexStatusResponse(
+            state="ready",
+            configured_provider=configured_provider,
+            configured_model=configured_model,
+            stored_provider=stored_provider,
+            stored_model=stored_model,
+            stored_dimension=stored_dimension,
+            document_count=document_count,
+            chunk_count=chunk_count,
+            reindex_required=False,
+        )
+
+    def reset_embedding_index(self) -> IndexResetResponse:
+        with self.database.connect() as connection:
+            document_count = self._count_documents(connection)
+            chunk_count = self._count_chunks(connection)
+            connection.execute("DELETE FROM documents")
+            connection.execute("DELETE FROM embedding_index WHERE singleton = 1")
+
+        return IndexResetResponse(
+            documents_deleted=document_count,
+            chunks_deleted=chunk_count,
+        )
 
     def create_chat_record(
         self,
@@ -196,6 +360,104 @@ class Storage:
                     utc_now_iso(),
                 ),
             )
+
+    def _ensure_embedding_index_for_write(
+        self,
+        connection: sqlite3.Connection,
+        provider: str,
+        model: str,
+        dimension: int,
+        now: str,
+    ) -> None:
+        chunk_count = self._count_chunks(connection)
+        row = self._embedding_index_row(connection)
+
+        if chunk_count > 0:
+            if row is None:
+                raise EmbeddingIndexReindexRequiredError(
+                    "Existing indexed chunks predate embedding metadata, so their vector space "
+                    "cannot be proven compatible. Call DELETE /api/index, then re-ingest the "
+                    "documents with the current embedding configuration."
+                )
+            self._validate_embedding_index(
+                row=row,
+                provider=provider,
+                model=model,
+                dimension=dimension,
+            )
+            return
+
+        if row is None:
+            connection.execute(
+                """
+                INSERT INTO embedding_index (
+                    singleton, provider, model, dimension, created_at, updated_at
+                )
+                VALUES (1, ?, ?, ?, ?, ?)
+                """,
+                (provider, model, dimension, now, now),
+            )
+            return
+
+        if (
+            str(row["provider"]) != provider
+            or str(row["model"]) != model
+            or int(row["dimension"]) != dimension
+        ):
+            connection.execute(
+                """
+                UPDATE embedding_index
+                SET provider = ?, model = ?, dimension = ?, updated_at = ?
+                WHERE singleton = 1
+                """,
+                (provider, model, dimension, now),
+            )
+
+    @staticmethod
+    def _validate_embedding_index(
+        row: sqlite3.Row,
+        provider: str,
+        model: str,
+        dimension: int | None,
+    ) -> None:
+        stored_provider = str(row["provider"])
+        stored_model = str(row["model"])
+        stored_dimension = int(row["dimension"])
+
+        if stored_provider != provider or stored_model != model:
+            raise EmbeddingIndexCompatibilityError(
+                "Embedding index mismatch: stored index uses "
+                f"{stored_provider}/{stored_model} ({stored_dimension} dimensions), "
+                f"but the application is configured for {provider}/{model}. "
+                "Call DELETE /api/index, then re-ingest the documents."
+            )
+
+        if dimension is not None and stored_dimension != dimension:
+            raise EmbeddingIndexCompatibilityError(
+                "Embedding dimension mismatch: stored index uses "
+                f"{stored_dimension} dimensions, but the current query/document embedding "
+                f"has {dimension}. Call DELETE /api/index, then re-ingest the documents."
+            )
+
+    @staticmethod
+    def _embedding_index_row(connection: sqlite3.Connection) -> sqlite3.Row | None:
+        return connection.execute(
+            """
+            SELECT provider, model, dimension, created_at, updated_at
+            FROM embedding_index
+            WHERE singleton = 1
+            """
+        ).fetchone()
+
+    @staticmethod
+    def _count_documents(connection: sqlite3.Connection) -> int:
+        row = connection.execute("SELECT COUNT(*) AS count FROM documents").fetchone()
+        return int(row["count"]) if row is not None else 0
+
+    @staticmethod
+    def _count_chunks(connection: sqlite3.Connection) -> int:
+        row = connection.execute("SELECT COUNT(*) AS count FROM chunks").fetchone()
+        return int(row["count"]) if row is not None else 0
 
     @staticmethod
     def _diversify_sources_by_document(

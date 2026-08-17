@@ -76,8 +76,24 @@ def _create_core_schema(connection: sqlite3.Connection) -> None:
         connection.execute(statement)
 
 
+def _create_embedding_index_schema(connection: sqlite3.Connection) -> None:
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS embedding_index (
+            singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
+            provider TEXT NOT NULL,
+            model TEXT NOT NULL,
+            dimension INTEGER NOT NULL CHECK (dimension > 0),
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(version=1, name="baseline-local-rag-schema", apply=_create_core_schema),
+    Migration(version=2, name="embedding-index-metadata", apply=_create_embedding_index_schema),
 )
 
 _CORE_TABLES = {"documents", "chunks", "chat_messages"}
