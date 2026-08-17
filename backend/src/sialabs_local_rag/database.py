@@ -226,9 +226,18 @@ def _create_fts_schema_migration(connection: sqlite3.Connection) -> None:
 
 
 def _add_chunk_source_metadata(connection: sqlite3.Connection) -> None:
-    connection.execute("ALTER TABLE chunks ADD COLUMN page_number INTEGER")
-    connection.execute("ALTER TABLE chunks ADD COLUMN section_title TEXT")
-    connection.execute("ALTER TABLE chunks ADD COLUMN source_locator TEXT")
+    existing_columns = {
+        str(row["name"])
+        for row in connection.execute("PRAGMA table_info(chunks)").fetchall()
+    }
+    additions = (
+        ("page_number", "ALTER TABLE chunks ADD COLUMN page_number INTEGER"),
+        ("section_title", "ALTER TABLE chunks ADD COLUMN section_title TEXT"),
+        ("source_locator", "ALTER TABLE chunks ADD COLUMN source_locator TEXT"),
+    )
+    for column_name, statement in additions:
+        if column_name not in existing_columns:
+            connection.execute(statement)
 
 
 MIGRATIONS: tuple[Migration, ...] = (
