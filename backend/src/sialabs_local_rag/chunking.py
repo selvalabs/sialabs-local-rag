@@ -16,6 +16,9 @@ class StructuredChunk:
     content: str
     page_number: int | None = None
     section_title: str | None = None
+    slide_number: int | None = None
+    sheet_name: str | None = None
+    cell_range: str | None = None
     source_locator: str | None = None
 
 
@@ -88,7 +91,7 @@ def chunk_parsed_segments(
     chunk_size: int = 1200,
     overlap: int = 180,
 ) -> list[StructuredChunk]:
-    """Chunk parsed source units without crossing page or section boundaries."""
+    """Chunk parsed source units without crossing page/section/slide/sheet boundaries."""
 
     if chunk_size <= 0:
         raise ValueError("chunk_size must be greater than zero")
@@ -118,6 +121,9 @@ def chunk_parsed_segments(
                     content=content,
                     page_number=segment.page_number,
                     section_title=segment.section_title,
+                    slide_number=segment.slide_number,
+                    sheet_name=segment.sheet_name,
+                    cell_range=segment.cell_range,
                     source_locator=segment.source_locator,
                 )
             )
@@ -131,6 +137,12 @@ def _metadata_prefix(segment: ParsedSegment) -> str:
         labels.append(f"Section: {segment.section_title}")
     if segment.page_number is not None:
         labels.append(f"Page {segment.page_number}")
+    if segment.slide_number is not None:
+        labels.append(f"Slide {segment.slide_number}")
+    if segment.sheet_name:
+        labels.append(f"Sheet: {segment.sheet_name}")
+    if segment.cell_range:
+        labels.append(f"Range {segment.cell_range}")
     return " · ".join(labels)
 
 
