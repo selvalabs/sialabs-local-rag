@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from sialabs_local_rag.schemas import SourceChunk
+from sialabs_local_rag.source_metadata import enrich_source_metadata
 from sialabs_local_rag.storage import Storage
 
 RetrievalMode = Literal["dense", "hybrid"]
@@ -84,20 +85,22 @@ def retrieve_sources(
     )
 
     if options.mode == "dense":
-        return _annotate_dense(dense[:top_k])
+        selected = _annotate_dense(dense[:top_k])
+    else:
+        lexical = _search_lexical(storage, query_text=query_text, limit=candidate_k)
+        if not lexical:
+            selected = _annotate_dense(dense[:top_k])
+        else:
+            selected = _fuse_rrf(
+                dense=dense,
+                lexical=lexical,
+                top_k=top_k,
+                dense_weight=options.dense_weight,
+                lexical_weight=options.lexical_weight,
+                rrf_k=options.rrf_k,
+            )
 
-    lexical = _search_lexical(storage, query_text=query_text, limit=candidate_k)
-    if not lexical:
-        return _annotate_dense(dense[:top_k])
-
-    return _fuse_rrf(
-        dense=dense,
-        lexical=lexical,
-        top_k=top_k,
-        dense_weight=options.dense_weight,
-        lexical_weight=options.lexical_weight,
-        rrf_k=options.rrf_k,
-    )
+    return enrich_source_metadata(storage.database, selected)
 
 
 def _annotate_dense(sources: Sequence[SourceChunk]) -> list[SourceChunk]:
