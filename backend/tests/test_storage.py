@@ -53,7 +53,9 @@ def test_search_chunks_prefers_multiple_stronger_chunks_from_same_document(tmp_p
     )
 
 
-def test_search_chunks_applies_minimum_score_and_can_return_fewer_than_top_k(tmp_path: Path) -> None:
+def test_search_chunks_applies_minimum_score_and_can_return_fewer_than_top_k(
+    tmp_path: Path,
+) -> None:
     database = Database(f"sqlite:///{tmp_path / 'threshold.db'}")
     database.init_schema()
     storage = Storage(database)
