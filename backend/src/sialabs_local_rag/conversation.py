@@ -82,10 +82,9 @@ def _needs_conversation_anchor(question: str) -> bool:
     if any(token in _REFERENCE_TERMS for token in tokens):
         return True
 
-    if len(tokens) <= 4 and any(lowered.startswith(prefix) for prefix in _FOLLOW_UP_PREFIXES):
-        return True
-
-    return False
+    return len(tokens) <= 4 and any(
+        lowered.startswith(prefix) for prefix in _FOLLOW_UP_PREFIXES
+    )
 
 
 def _latest_user_message(
