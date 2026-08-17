@@ -65,7 +65,7 @@ def test_version_five_database_upgrades_with_nullable_richer_metadata(
     monkeypatch.setattr(database_module, "MIGRATIONS", current_migrations)
     database.init_schema()
 
-    assert database.schema_version() == 6
+    assert database.schema_version() == database_module.latest_schema_version()
     with database.connect() as connection:
         row = connection.execute(
             """

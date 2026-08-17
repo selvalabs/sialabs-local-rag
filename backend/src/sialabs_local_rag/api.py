@@ -14,6 +14,7 @@ from fastapi import (
     status,
 )
 
+from sialabs_local_rag.collection_store import CollectionNotFoundError, CollectionStore
 from sialabs_local_rag.ocr import OcrUnavailableError
 from sialabs_local_rag.parsing import (
     DocumentParsingError,
@@ -25,6 +26,8 @@ from sialabs_local_rag.schemas import (
     ChatHistoryClearResponse,
     ChatRequest,
     ChatResponse,
+    CollectionListResponse,
+    CollectionSummary,
     DocumentCreate,
     DocumentListResponse,
     DocumentResponse,
@@ -187,6 +190,31 @@ def reset_index(
     return service.reset_index()
 
 
+@api_router.get("/collections", response_model=CollectionListResponse)
+def list_collections(
+    storage: Annotated[Storage, Depends(get_storage)],
+) -> CollectionListResponse:
+    collection_store = CollectionStore(storage.database)
+    summaries: list[CollectionSummary] = []
+    for collection in collection_store.list_collections():
+        active, missing, errors = collection_store.collection_counts(collection.id)
+        summaries.append(
+            CollectionSummary.model_validate(
+                {
+                    "id": collection.id,
+                    "name": collection.name,
+                    "kind": collection.kind,
+                    "missing_policy": collection.missing_policy,
+                    "active_sources": active,
+                    "missing_sources": missing,
+                    "error_sources": errors,
+                    "last_scanned_at": collection.last_scanned_at,
+                }
+            )
+        )
+    return CollectionListResponse(collections=summaries)
+
+
 @api_router.delete("/chat/history", response_model=ChatHistoryClearResponse)
 def clear_chat_history(
     storage: Annotated[Storage, Depends(get_storage)],
@@ -322,9 +350,12 @@ async def chat(
         return await service.answer_question(
             question=payload.question,
             conversation_context=payload.conversation_context,
+            collection_id=payload.collection_id,
             top_k=payload.top_k,
             runtime_options=payload.runtime_options,
         )
+    except CollectionNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except EmbeddingIndexCompatibilityError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except ProviderError as exc:

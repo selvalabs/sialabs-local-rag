@@ -103,6 +103,21 @@ class DocumentListResponse(BaseModel):
     documents: list[DocumentResponse]
 
 
+class CollectionSummary(BaseModel):
+    id: str
+    name: str
+    kind: Literal["manual", "folder"]
+    missing_policy: Literal["mark", "remove"]
+    active_sources: int
+    missing_sources: int
+    error_sources: int
+    last_scanned_at: str | None = None
+
+
+class CollectionListResponse(BaseModel):
+    collections: list[CollectionSummary]
+
+
 class SourceChunk(BaseModel):
     chunk_id: str
     document_id: str
@@ -110,6 +125,7 @@ class SourceChunk(BaseModel):
     chunk_index: int
     score: float
     content: str
+    collection_id: str | None = None
     page_number: int | None = None
     section_title: str | None = None
     slide_number: int | None = None
@@ -131,6 +147,7 @@ class ConversationMessage(BaseModel):
 class ChatRequest(BaseModel):
     question: str = Field(min_length=3, max_length=4000)
     conversation_context: list[ConversationMessage] = Field(default_factory=list, max_length=12)
+    collection_id: str | None = Field(default=None, min_length=1, max_length=120)
     top_k: int | None = Field(default=None, ge=1, le=12)
     runtime_options: RuntimeOptions | None = None
 
@@ -142,4 +159,5 @@ class ChatResponse(BaseModel):
     model: str
     retrieval_query: str
     retrieval_top_k: int
+    collection_id: str | None = None
     latency_ms: int

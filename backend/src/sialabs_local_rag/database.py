@@ -255,6 +255,84 @@ def _add_richer_source_metadata(connection: sqlite3.Connection) -> None:
             connection.execute(statement)
 
 
+def _create_collection_schema(connection: sqlite3.Connection) -> None:
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS collections (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            kind TEXT NOT NULL CHECK (kind IN ('manual', 'folder')),
+            root_path TEXT UNIQUE,
+            missing_policy TEXT NOT NULL DEFAULT 'mark'
+                CHECK (missing_policy IN ('mark', 'remove')),
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            last_scanned_at TEXT
+        )
+        """
+    )
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS collection_sources (
+            id TEXT PRIMARY KEY,
+            collection_id TEXT NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
+            document_id TEXT REFERENCES documents(id) ON DELETE CASCADE,
+            relative_path TEXT,
+            content_hash TEXT NOT NULL,
+            file_size INTEGER,
+            modified_ns INTEGER,
+            status TEXT NOT NULL DEFAULT 'active'
+                CHECK (status IN ('active', 'missing', 'error')),
+            last_seen_at TEXT,
+            last_error TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            UNIQUE(collection_id, relative_path)
+        )
+        """
+    )
+    connection.execute(
+        "CREATE INDEX IF NOT EXISTS idx_collection_sources_collection_id "
+        "ON collection_sources(collection_id)"
+    )
+    connection.execute(
+        "CREATE INDEX IF NOT EXISTS idx_collection_sources_document_id "
+        "ON collection_sources(document_id)"
+    )
+    connection.execute(
+        """
+        INSERT OR IGNORE INTO collections (
+            id, name, kind, root_path, missing_policy, created_at, updated_at, last_scanned_at
+        )
+        VALUES (
+            'default', 'Local base', 'manual', NULL, 'mark',
+            strftime('%Y-%m-%dT%H:%M:%SZ', 'now'),
+            strftime('%Y-%m-%dT%H:%M:%SZ', 'now'),
+            NULL
+        )
+        """
+    )
+    connection.execute(
+        """
+        INSERT OR IGNORE INTO collection_sources (
+            id, collection_id, document_id, relative_path, content_hash,
+            status, last_seen_at, created_at, updated_at
+        )
+        SELECT
+            'default:' || documents.id,
+            'default',
+            documents.id,
+            NULL,
+            documents.content_hash,
+            'active',
+            documents.updated_at,
+            documents.created_at,
+            documents.updated_at
+        FROM documents
+        """
+    )
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(version=1, name="baseline-local-rag-schema", apply=_create_core_schema),
     Migration(version=2, name="embedding-index-metadata", apply=_create_embedding_index_schema),
@@ -266,6 +344,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     Migration(version=4, name="optional-fts5-retrieval-index", apply=_create_fts_schema_migration),
     Migration(version=5, name="chunk-source-metadata", apply=_add_chunk_source_metadata),
     Migration(version=6, name="richer-source-metadata", apply=_add_richer_source_metadata),
+    Migration(version=7, name="local-folder-collections", apply=_create_collection_schema),
 )
 
 _CORE_TABLES = {"documents", "chunks", "chat_messages"}
