@@ -18,9 +18,36 @@ integer version and runs in ascending order during application startup.
 - Migration execution and the version update run in one SQLite transaction. A
   failed migration is rolled back before startup reports an error.
 
-This migration layer is intentionally small. Future changes that add embedding
-metadata, richer source locations or collections should add a new ordered migration
-instead of modifying old migrations in place.
+Released migrations are append-only. New schema changes must add a new ordered
+migration instead of rewriting older migration definitions.
+
+## Current migrations
+
+### Version 1 — baseline local RAG schema
+
+Creates or adopts the original:
+
+- `documents`;
+- `chunks`;
+- `chat_messages`;
+- chunk indexes.
+
+### Version 2 — embedding index metadata
+
+Adds the singleton `embedding_index` table containing:
+
+- embedding provider;
+- embedding model;
+- vector dimension;
+- creation/update timestamps.
+
+The migration deliberately does **not** guess metadata for already-indexed legacy
+chunks. Existing chunks without an `embedding_index` row are treated as requiring
+an explicit index reset/re-ingestion because their original vector space cannot be
+proven from the old database alone.
+
+A legacy database with no chunks can continue normally: the first new ingestion
+establishes the embedding signature.
 
 ## Backup before important upgrades
 
@@ -49,6 +76,10 @@ If startup reports a schema migration error:
 
 A migration failure should not leave a partially applied schema. Tests cover
 transaction rollback and upgrade from the pre-vNext schema.
+
+Embedding incompatibility is not a schema migration failure. If
+`GET /api/index/status` reports `legacy` or `incompatible`, use the explicit index
+reset/re-ingestion workflow documented in `docs/API.md`.
 
 ## Developer workflow
 
