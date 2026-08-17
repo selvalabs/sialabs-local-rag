@@ -282,4 +282,4 @@ class CollectionScanner:
 
 
 def _metadata_hash(file_size: int, modified_ns: int) -> str:
-    return sha256(f"metadata:{file_size}:{modified_ns}".encode("utf-8")).hexdigest()
+    return sha256(f"metadata:{file_size}:{modified_ns}".encode()).hexdigest()
