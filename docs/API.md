@@ -40,10 +40,35 @@ The response also includes the stored vector dimension when known and a
 
 Explicitly resets the document/vector index so documents can be re-ingested with a
 new embedding configuration. The operation deletes indexed documents and their
-chunks plus the stored embedding signature.
+chunks, removes the stored embedding signature and clears persisted backend chat
+traces because answers may contain facts derived from the removed documents.
 
-This endpoint does **not** clear persisted chat history. Chat persistence and
-retention are tracked separately from the embedding-index lifecycle.
+### `DELETE /api/chat/history`
+
+Deletes all persisted backend chat trace records. New chat records keep the
+question, answer, runtime metadata and lightweight source identifiers, but do not
+copy retrieved chunk text into `metadata_json`.
+
+The frontend Clear chat action calls this endpoint and also removes the browser
+conversation history.
+
+### `DELETE /api/local-data`
+
+Performs a destructive reset of the app's persisted local knowledge data:
+
+- documents;
+- chunks;
+- embedding-index signature;
+- backend chat traces.
+
+The endpoint is deliberately guarded. In normal runtime the request must originate
+from a loopback client and must include:
+
+```text
+X-Confirm-Local-Data-Reset: delete-all
+```
+
+This endpoint is not intended as a public or routine remote administration API.
 
 ### `POST /api/documents`
 
@@ -87,7 +112,12 @@ Lists indexed documents.
 
 ### `DELETE /api/documents/{document_id}`
 
-Deletes a document and its associated chunks.
+Deletes a document and its associated chunks. A successful deletion also clears
+persisted backend chat history so generated answers derived from the deleted
+source are not retained as an undocumented secondary copy.
+
+The frontend clears its local conversation state after a successful document
+deletion as well.
 
 ### `POST /api/chat`
 
@@ -112,6 +142,11 @@ The response includes:
 - provider and model metadata;
 - latency in milliseconds.
 
+Retrieved source content is returned to the active client so it can be inspected,
+but it is not duplicated into new backend chat trace metadata. The frontend also
+does not serialize the detailed response/source objects into persistent browser
+chat history.
+
 ## Embedding compatibility and reindexing
 
 The application never intentionally mixes vectors from different declared
@@ -125,7 +160,7 @@ Safe recovery is explicit:
 
 1. Back up the local SQLite database if the existing index matters.
 2. Call `GET /api/index/status` to inspect the reason.
-3. Call `DELETE /api/index` only when you accept removing the indexed documents.
+3. Call `DELETE /api/index` only when you accept removing the indexed documents and associated chat traces.
 4. Re-ingest the source documents using the current embedding configuration.
 
 The application does not silently reconstruct/re-embed old documents because the
@@ -135,6 +170,8 @@ current schema does not preserve every original uploaded file in a lossless form
 
 | Status | Case |
 | --- | --- |
+| 400 | Full local-data reset confirmation header is missing or invalid |
+| 403 | Full local-data reset is requested from a non-loopback client |
 | 409 | Duplicate document or incompatible/legacy embedding index |
 | 413 | Upload exceeds the size limit |
 | 415 | Unsupported file extension |
