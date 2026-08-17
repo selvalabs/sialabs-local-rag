@@ -110,6 +110,11 @@ class SourceChunk(BaseModel):
     chunk_index: int
     score: float
     content: str
+    dense_score: float | None = None
+    dense_rank: int | None = None
+    lexical_rank: int | None = None
+    fusion_score: float | None = None
+    retrieval_channels: list[Literal["dense", "lexical"]] = Field(default_factory=list)
 
 
 class ChatRequest(BaseModel):

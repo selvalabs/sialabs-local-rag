@@ -32,12 +32,12 @@ Metrics include:
 
 A positive query succeeds only when all expected documents and all expected evidence markers are recovered. A negative query succeeds only when retrieval returns no sources.
 
-## Deterministic CI baseline
+## Deterministic dense CI baseline
 
 Run from `backend/`:
 
 ```powershell
-uv run python -m sialabs_local_rag.evaluation --provider hash
+uv run python -m sialabs_local_rag.evaluation --provider hash --mode dense
 ```
 
 Write a machine-readable report with:
@@ -45,18 +45,19 @@ Write a machine-readable report with:
 ```powershell
 uv run python -m sialabs_local_rag.evaluation `
   --provider hash `
+  --mode dense `
   --json-output .\evaluation\latest-hash-report.json
 ```
 
-The deterministic baseline is stored in:
+The deterministic dense baseline is stored in:
 
 ```text
 backend/evaluation/baseline-hash.json
 ```
 
-The backend pytest suite recomputes the hash-provider evaluation and compares its aggregate metrics with that recorded baseline.
+The backend pytest suite recomputes the hash-provider dense evaluation and compares its aggregate metrics with that recorded baseline.
 
-### Current hash baseline
+### Current dense hash baseline
 
 The current relevance-first retriever uses a conservative `0.0` minimum score in the deterministic baseline.
 
@@ -76,17 +77,47 @@ The concrete improvement is the Atlas case: the two strongest chunks both come f
 
 The remaining negative-query gap is different: deterministic hash embeddings produce positive collision scores for unrelated content, so the conservative `0.0` threshold does not reject the Apollo query. Hash mode is therefore useful for deterministic ranking regression tests but not for choosing a production semantic-model score cutoff.
 
+## Hybrid retrieval comparison
+
+The application defaults to hybrid retrieval when SQLite FTS5 is available. Hybrid mode builds dense and lexical candidate pools independently and combines their ranks with weighted Reciprocal Rank Fusion (RRF).
+
+Run the same repository evaluation in hybrid mode:
+
+```powershell
+uv run python -m sialabs_local_rag.evaluation --provider hash --mode hybrid
+```
+
+The CI test suite compares hybrid metrics against the recorded dense baseline and rejects regressions in:
+
+- document hit@1;
+- document hit@requested-k;
+- macro document recall;
+- macro evidence recall;
+- MRR;
+- overall query success rate.
+
+A separate deterministic test covers the lexical-rescue case directly: a `ZX-81` exact-code query is constructed so dense ranking chooses a semantic decoy while FTS5 identifies the literal code; weighted RRF must promote the correct lexical document.
+
+Hybrid source results include optional debugging metadata such as dense rank, lexical rank, dense score and fusion score. This metadata is intended for evaluation and diagnostics, not for answer prose.
+
+If FTS5 is unavailable, hybrid retrieval falls back to the dense path. Dense-only behavior can also be forced with:
+
+```text
+RETRIEVAL_MODE=dense
+```
+
 ## Relevance threshold sweeps
 
-The evaluator accepts the same minimum-score concept used by the application:
+The evaluator accepts the same minimum-score concept used by the dense candidate pool:
 
 ```powershell
 uv run python -m sialabs_local_rag.evaluation `
   --provider hash `
+  --mode dense `
   --min-score 0.25
 ```
 
-For a real semantic embedding model, run several values and compare positive recall against no-answer behavior rather than selecting a threshold from intuition.
+For a real semantic embedding model, run several values and compare positive recall against no-answer behavior rather than selecting a threshold from intuition. In hybrid mode, the threshold filters dense candidates; lexical candidates remain independently eligible for RRF fusion.
 
 ## Optional real EmbeddingGemma evaluation
 
@@ -94,15 +125,15 @@ When Ollama and the configured embedding model are available locally:
 
 ```powershell
 $env:OLLAMA_EMBED_MODEL = "embeddinggemma"
-uv run python -m sialabs_local_rag.evaluation --provider ollama
+uv run python -m sialabs_local_rag.evaluation --provider ollama --mode hybrid
 ```
 
 Threshold sweep example:
 
 ```powershell
-uv run python -m sialabs_local_rag.evaluation --provider ollama --min-score 0.20
-uv run python -m sialabs_local_rag.evaluation --provider ollama --min-score 0.30
-uv run python -m sialabs_local_rag.evaluation --provider ollama --min-score 0.40
+uv run python -m sialabs_local_rag.evaluation --provider ollama --mode hybrid --min-score 0.20
+uv run python -m sialabs_local_rag.evaluation --provider ollama --mode hybrid --min-score 0.30
+uv run python -m sialabs_local_rag.evaluation --provider ollama --mode hybrid --min-score 0.40
 ```
 
 These numbers are examples of values to test, not recommended EmbeddingGemma defaults. The chosen production cutoff should be based on observed retrieval results for the actual model/runtime and representative documents.
@@ -115,12 +146,12 @@ A real-model report can be written with `--json-output` for before/after compari
 
 For changes such as relevance gating, hybrid retrieval or query rewriting:
 
-1. Run the deterministic baseline before the change.
+1. Run the deterministic dense baseline before the change.
 2. Implement the retrieval change in its own branch.
-3. Run the evaluator again.
+3. Run dense and candidate retrieval modes against the same corpus/questions.
 4. Inspect both aggregate metrics and per-query rankings.
 5. Run the optional Ollama/EmbeddingGemma evaluation when local runtime is available.
-6. Update `baseline-hash.json` only when the changed deterministic behavior is intentional and justified in the PR.
+6. Update `baseline-hash.json` only when changed dense deterministic behavior is intentional and justified in the PR.
 7. Do not accept an aggregate improvement that hides a meaningful regression in an important individual query without documenting the trade-off.
 
 The evaluation fixtures are deliberately small enough to review in Git. New failure cases should be added as concrete corpus/questions rather than hidden in ad-hoc local tests.
