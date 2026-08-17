@@ -14,6 +14,7 @@ from fastapi import (
     status,
 )
 
+from sialabs_local_rag.ocr import OcrUnavailableError
 from sialabs_local_rag.parsing import (
     DocumentParsingError,
     UnsupportedDocumentTypeError,
@@ -44,7 +45,7 @@ from sialabs_local_rag.storage import (
     Storage,
 )
 
-MAX_UPLOAD_BYTES = 1_000_000
+MAX_UPLOAD_BYTES = 10_000_000
 _LOOPBACK_HOSTS = {"127.0.0.1", "::1"}
 _LOCAL_DATA_RESET_CONFIRMATION = "delete-all"
 
@@ -254,7 +255,7 @@ async def upload_document(
     if len(raw_content) > MAX_UPLOAD_BYTES:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail="Uploaded file is larger than the 1 MB MVP limit.",
+            detail="Uploaded file is larger than the 10 MB local limit.",
         )
 
     try:
@@ -265,6 +266,11 @@ async def upload_document(
     except UnsupportedDocumentTypeError as exc:
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail=str(exc),
+        ) from exc
+    except OcrUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(exc),
         ) from exc
     except DocumentParsingError as exc:
