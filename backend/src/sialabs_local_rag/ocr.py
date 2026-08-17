@@ -112,8 +112,8 @@ def _load_ocr_runtime(require_pdf: bool) -> OcrRuntime:
     except ModuleNotFoundError as exc:
         raise OcrUnavailableError(
             "Local OCR is optional and is not installed. From backend/, run "
-            "`uv sync --extra ocr`, install the local Tesseract OCR executable, "
-            "then restart the backend."
+            "`uv pip install -r requirements-ocr.txt`, install the local Tesseract OCR "
+            "executable, then restart the backend."
         ) from exc
 
     try:
