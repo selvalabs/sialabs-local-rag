@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from time import perf_counter
 
 from sialabs_local_rag.chunking import chunk_text
+from sialabs_local_rag.conversation import build_retrieval_query
 from sialabs_local_rag.prompting import SYSTEM_PROMPT, build_rag_prompt
 from sialabs_local_rag.providers import (
     ChatProvider,
@@ -13,6 +15,7 @@ from sialabs_local_rag.providers import (
 from sialabs_local_rag.retrieval import RetrievalOptions, retrieve_sources
 from sialabs_local_rag.schemas import (
     ChatResponse,
+    ConversationMessage,
     DocumentResponse,
     IndexResetResponse,
     IndexStatusResponse,
@@ -78,6 +81,7 @@ class RagService:
     async def answer_question(
         self,
         question: str,
+        conversation_context: Sequence[ConversationMessage] = (),
         top_k: int | None = None,
         runtime_options: RuntimeOptions | None = None,
     ) -> ChatResponse:
@@ -90,10 +94,12 @@ class RagService:
             provider=self.embedding_provider.name,
             model=self.embedding_provider.model,
         )
-        query_embedding = (await self.embedding_provider.embed([question]))[0]
+
+        retrieval_query = build_retrieval_query(question, conversation_context)
+        query_embedding = (await self.embedding_provider.embed([retrieval_query]))[0]
         sources = retrieve_sources(
             storage=self.storage,
-            query_text=question,
+            query_text=retrieval_query,
             query_embedding=query_embedding,
             top_k=selected_top_k,
             embedding_provider=self.embedding_provider.name,
@@ -115,7 +121,11 @@ class RagService:
                 "para responder essa pergunta."
             )
         else:
-            user_prompt = build_rag_prompt(question=question, sources=sources)
+            user_prompt = build_rag_prompt(
+                question=question,
+                sources=sources,
+                conversation_context=conversation_context,
+            )
             answer = await self.chat_provider.generate(
                 system_prompt=SYSTEM_PROMPT,
                 user_prompt=user_prompt,
@@ -138,6 +148,7 @@ class RagService:
             sources=sources,
             provider=self.chat_provider.name,
             model=response_model,
+            retrieval_query=retrieval_query,
             retrieval_top_k=selected_top_k,
             latency_ms=latency_ms,
         )
