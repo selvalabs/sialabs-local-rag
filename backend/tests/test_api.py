@@ -80,6 +80,125 @@ def test_create_document_and_chat(client: TestClient) -> None:
     assert body["sources"][0]["document_title"] == "SoberanIA Labs Portfolio"
 
 
+def test_index_status_records_embedding_signature(client: TestClient) -> None:
+    create_response = client.post(
+        "/api/documents",
+        json={
+            "title": "Embedding signature",
+            "content": (
+                "This document establishes deterministic hash embeddings "
+                "for the local index."
+            ),
+            "source_type": "manual",
+        },
+    )
+    assert create_response.status_code == 201
+
+    response = client.get("/api/index/status")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["state"] == "ready"
+    assert body["configured_provider"] == "hash"
+    assert body["configured_model"] == "hash-bow-128"
+    assert body["stored_provider"] == "hash"
+    assert body["stored_model"] == "hash-bow-128"
+    assert body["stored_dimension"] == 128
+    assert body["reindex_required"] is False
+
+
+def test_embedding_mismatch_returns_conflict_before_chat(client: TestClient) -> None:
+    create_response = client.post(
+        "/api/documents",
+        json={
+            "title": "Mismatch source",
+            "content": "This document creates an embedding index before the mismatch is simulated.",
+            "source_type": "manual",
+        },
+    )
+    assert create_response.status_code == 201
+
+    storage = client.app.state.storage
+    with storage.database.connect() as connection:
+        connection.execute(
+            "UPDATE embedding_index SET model = ? WHERE singleton = 1",
+            ("different-model",),
+        )
+
+    response = client.post(
+        "/api/chat",
+        json={"question": "What does the mismatch source describe?"},
+    )
+
+    assert response.status_code == 409
+    assert "Embedding index mismatch" in response.json()["detail"]
+    assert "DELETE /api/index" in response.json()["detail"]
+
+
+def test_legacy_embedding_index_returns_reindex_conflict(client: TestClient) -> None:
+    create_response = client.post(
+        "/api/documents",
+        json={
+            "title": "Legacy simulation",
+            "content": (
+                "This document is used to simulate an index created before "
+                "metadata existed."
+            ),
+            "source_type": "manual",
+        },
+    )
+    assert create_response.status_code == 201
+
+    storage = client.app.state.storage
+    with storage.database.connect() as connection:
+        connection.execute("DELETE FROM embedding_index WHERE singleton = 1")
+
+    status_response = client.get("/api/index/status")
+    assert status_response.status_code == 200
+    assert status_response.json()["state"] == "legacy"
+    assert status_response.json()["reindex_required"] is True
+
+    chat_response = client.post(
+        "/api/chat",
+        json={"question": "Can this legacy index be queried safely?"},
+    )
+    assert chat_response.status_code == 409
+    assert "predate embedding metadata" in chat_response.json()["detail"]
+
+
+def test_reset_index_clears_vectors_and_allows_reingestion(client: TestClient) -> None:
+    create_response = client.post(
+        "/api/documents",
+        json={
+            "title": "Reset source",
+            "content": "This document will be removed by the explicit local index reset workflow.",
+            "source_type": "manual",
+        },
+    )
+    assert create_response.status_code == 201
+
+    reset_response = client.delete("/api/index")
+
+    assert reset_response.status_code == 200
+    assert reset_response.json()["documents_deleted"] == 1
+    assert reset_response.json()["chunks_deleted"] >= 1
+
+    status_response = client.get("/api/index/status")
+    assert status_response.status_code == 200
+    assert status_response.json()["state"] == "empty"
+    assert status_response.json()["chunk_count"] == 0
+
+    recreate_response = client.post(
+        "/api/documents",
+        json={
+            "title": "Reingested source",
+            "content": "The local base accepts new documents after an explicit index reset.",
+            "source_type": "manual",
+        },
+    )
+    assert recreate_response.status_code == 201
+
+
 def test_duplicate_document_returns_conflict(client: TestClient) -> None:
     payload = {
         "title": "Duplicated document",

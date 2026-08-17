@@ -54,6 +54,24 @@ class PublicConfigResponse(BaseModel):
     chunk_overlap: int
 
 
+class IndexStatusResponse(BaseModel):
+    state: Literal["empty", "ready", "legacy", "incompatible"]
+    configured_provider: str
+    configured_model: str
+    stored_provider: str | None = None
+    stored_model: str | None = None
+    stored_dimension: int | None = None
+    document_count: int
+    chunk_count: int
+    reindex_required: bool
+    reason: str | None = None
+
+
+class IndexResetResponse(BaseModel):
+    documents_deleted: int
+    chunks_deleted: int
+
+
 class DocumentCreate(BaseModel):
     title: str = Field(min_length=1, max_length=160)
     content: str = Field(min_length=10, max_length=1_000_000)
