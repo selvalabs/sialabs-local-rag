@@ -62,6 +62,9 @@ export type SourceChunk = {
   content: string
   page_number?: number | null
   section_title?: string | null
+  slide_number?: number | null
+  sheet_name?: string | null
+  cell_range?: string | null
   source_locator?: string | null
 }
 
