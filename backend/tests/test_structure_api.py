@@ -53,11 +53,11 @@ def test_markdown_upload_returns_section_metadata_in_retrieved_source(
     client: TestClient,
 ) -> None:
     markdown = (
-        "# Safety\n\n"
-        "Wear protective equipment during inspection.\n\n"
-        "# Recovery\n\n"
-        "Use exact recovery code ZX-81 before restarting the console.\n"
-    ).encode("utf-8")
+        b"# Safety\n\n"
+        b"Wear protective equipment during inspection.\n\n"
+        b"# Recovery\n\n"
+        b"Use exact recovery code ZX-81 before restarting the console.\n"
+    )
     upload = client.post(
         "/api/documents/upload",
         files={"file": ("manual.md", markdown, "text/markdown")},
