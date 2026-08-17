@@ -135,6 +135,7 @@ def get_public_config(settings: Annotated[Settings, Depends(get_settings)]) -> P
         embedding_provider=settings.embedding_provider,
         embedding_model=get_embedding_model(settings),
         retrieval_top_k=settings.retrieval_top_k,
+        retrieval_min_score=settings.retrieval_min_score,
         chunk_size=settings.chunk_size,
         chunk_overlap=settings.chunk_overlap,
     )
