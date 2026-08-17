@@ -17,7 +17,7 @@ from fastapi import (
 from sialabs_local_rag.parsing import (
     DocumentParsingError,
     UnsupportedDocumentTypeError,
-    parse_uploaded_document,
+    parse_uploaded_document_structured,
 )
 from sialabs_local_rag.providers import ProviderError
 from sialabs_local_rag.schemas import (
@@ -258,7 +258,10 @@ async def upload_document(
         )
 
     try:
-        content = parse_uploaded_document(filename=filename, raw_content=raw_content)
+        document = parse_uploaded_document_structured(
+            filename=filename,
+            raw_content=raw_content,
+        )
     except UnsupportedDocumentTypeError as exc:
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
@@ -271,9 +274,9 @@ async def upload_document(
         ) from exc
 
     try:
-        return await service.ingest_text(
+        return await service.ingest_parsed_document(
             title=title or filename,
-            content=content,
+            document=document,
             source_type="upload",
         )
     except DuplicateDocumentError as exc:
