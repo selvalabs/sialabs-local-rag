@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "questions": [
+    {
+      "id": "orion-protocol",
+      "question": "Which protocol code is required for Project Orion emergency response?",
+      "expected_documents": ["Orion Operations Manual"],
+      "expected_evidence": ["ZEPHYR-17"],
+      "top_k": 3
+    },
+    {
+      "id": "orion-astronomy",
+      "question": "Which bright stars are named in the Orion constellation notes?",
+      "expected_documents": ["Orion Astronomy Notes"],
+      "expected_evidence": ["Betelgeuse", "Rigel"],
+      "top_k": 3
+    },
+    {
+      "id": "harbor-budget",
+      "question": "How often is the Harbor program budget reviewed?",
+      "expected_documents": ["Harbor Finance Guide"],
+      "expected_evidence": ["quarterly"],
+      "top_k": 3
+    },
+    {
+      "id": "harbor-weather",
+      "question": "Which measurements are recorded in the Harbor weather observations?",
+      "expected_documents": ["Harbor Weather Log"],
+      "expected_evidence": ["wave height", "barometric pressure"],
+      "top_k": 3
+    },
+    {
+      "id": "cedar-remote",
+      "question": "How many remote days per week does the Cedar team policy allow?",
+      "expected_documents": ["Cedar Remote Work Policy"],
+      "expected_evidence": ["three remote days"],
+      "top_k": 3
+    },
+    {
+      "id": "cedar-botany",
+      "question": "What kind of plants are cedar trees according to the botany notes?",
+      "expected_documents": ["Cedar Botany Notes"],
+      "expected_evidence": ["evergreen conifers"],
+      "top_k": 3
+    },
+    {
+      "id": "atlas-multi-evidence",
+      "question": "Which safeguards must operators verify during the Atlas reactor shutdown process?",
+      "expected_documents": ["Atlas Reactor Procedure"],
+      "expected_evidence": ["MERIDIAN-LOCK", "QUARTZ-SEAL"],
+      "top_k": 2
+    },
+    {
+      "id": "negative-apollo",
+      "question": "What is the launch date of Apollo 11?",
+      "expected_documents": [],
+      "expected_evidence": [],
+      "top_k": 3
+    }
+  ]
+}
