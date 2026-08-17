@@ -106,6 +106,13 @@ export async function deleteDocument(documentId: string): Promise<void> {
   }
 }
 
+export async function clearChatHistory(): Promise<void> {
+  const response = await fetchApi(`${API_URL}/api/chat/history`, {
+    method: 'DELETE',
+  })
+  await parseJsonResponse<{ messages_deleted: number }>(response)
+}
+
 export async function askQuestion(
   question: string,
   runtimeOptions?: RuntimeOptions,
