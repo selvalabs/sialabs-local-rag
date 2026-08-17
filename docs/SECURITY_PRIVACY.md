@@ -11,9 +11,35 @@ The local SQLite database stores:
 - document metadata;
 - text chunks;
 - embeddings serialized as JSON;
-- chat questions and answers used for local traceability.
+- chat questions and answers used for local traceability;
+- lightweight source references for chat traces, such as document/chunk identifiers and scores.
 
-Anyone with access to the database file may be able to read this content.
+New chat trace metadata does **not** duplicate the retrieved chunk text. Schema migration version 3 removes the `content` field from source metadata persisted by older versions while preserving lightweight source identifiers.
+
+The browser keeps conversational continuity in `localStorage`, but persists only message `id`, `role` and displayed message text. Detailed `ChatResponse` objects and retrieved source excerpts are kept in memory for the current browser session and are not serialized into the persistent chat-history key.
+
+Anyone with access to the SQLite database file or the user's browser profile may be able to read the remaining locally persisted content. SQLite storage is not encrypted by the application.
+
+## Deletion semantics
+
+Deletion behavior is intentionally explicit:
+
+- **Clear chat** (`DELETE /api/chat/history`) removes persisted backend chat traces. The frontend Clear chat action also removes the browser chat history.
+- **Delete document** removes the document and its chunks through SQLite cascade behavior and clears persisted backend chat traces, because generated answers may contain facts derived from the deleted document. The frontend also clears its local conversation state after a successful document deletion.
+- **Reset embedding index** removes indexed documents/chunks, clears the embedding signature and clears backend chat traces.
+- **Full local data reset** (`DELETE /api/local-data`) removes documents, chunks, the embedding-index signature and backend chat traces.
+
+If the backend is unavailable while the user presses Clear chat, the frontend still removes its local browser history and reports the backend error. Backend traces then remain until the clear operation succeeds or the local database is reset/deleted.
+
+### Guarded full local reset
+
+The full local-data reset endpoint is intentionally harder to invoke than normal deletion operations:
+
+- it accepts requests only from a loopback client (`127.0.0.1` or `::1` in normal runtime);
+- it requires the explicit header `X-Confirm-Local-Data-Reset: delete-all`;
+- it is not exposed as a routine UI action.
+
+This is defense in depth for a destructive local operation, not a substitute for authentication if the API is exposed beyond localhost.
 
 ## Public repository safety
 
