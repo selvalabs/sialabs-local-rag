@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 import sqlite3
 from collections.abc import Sequence
@@ -8,7 +9,8 @@ from typing import Literal
 
 from sialabs_local_rag.schemas import SourceChunk
 from sialabs_local_rag.source_metadata import enrich_source_metadata
-from sialabs_local_rag.storage import Storage
+from sialabs_local_rag.storage import EmbeddingIndexCompatibilityError, Storage
+from sialabs_local_rag.vector_math import cosine_similarity
 
 RetrievalMode = Literal["dense", "hybrid"]
 RetrievalChannel = Literal["dense", "lexical"]
@@ -74,20 +76,37 @@ def retrieve_sources(
     embedding_provider: str,
     embedding_model: str,
     options: RetrievalOptions,
+    collection_id: str | None = None,
 ) -> list[SourceChunk]:
     candidate_k = max(top_k, top_k * options.candidate_multiplier)
-    dense = storage.search_chunks(
-        query_embedding=query_embedding,
-        top_k=candidate_k,
-        embedding_provider=embedding_provider,
-        embedding_model=embedding_model,
-        minimum_score=options.minimum_dense_score,
-    )
+    if collection_id is None:
+        dense = storage.search_chunks(
+            query_embedding=query_embedding,
+            top_k=candidate_k,
+            embedding_provider=embedding_provider,
+            embedding_model=embedding_model,
+            minimum_score=options.minimum_dense_score,
+        )
+    else:
+        dense = _search_dense_collection(
+            storage=storage,
+            query_embedding=query_embedding,
+            limit=candidate_k,
+            embedding_provider=embedding_provider,
+            embedding_model=embedding_model,
+            minimum_score=options.minimum_dense_score,
+            collection_id=collection_id,
+        )
 
     if options.mode == "dense":
         selected = _annotate_dense(dense[:top_k])
     else:
-        lexical = _search_lexical(storage, query_text=query_text, limit=candidate_k)
+        lexical = _search_lexical(
+            storage,
+            query_text=query_text,
+            limit=candidate_k,
+            collection_id=collection_id,
+        )
         if not lexical:
             selected = _annotate_dense(dense[:top_k])
         else:
@@ -101,6 +120,74 @@ def retrieve_sources(
             )
 
     return enrich_source_metadata(storage.database, selected)
+
+
+def _search_dense_collection(
+    storage: Storage,
+    query_embedding: Sequence[float],
+    limit: int,
+    embedding_provider: str,
+    embedding_model: str,
+    minimum_score: float,
+    collection_id: str,
+) -> list[SourceChunk]:
+    storage.assert_embedding_compatible(
+        provider=embedding_provider,
+        model=embedding_model,
+    )
+    with storage.database.connect() as connection:
+        rows = connection.execute(
+            """
+            SELECT
+                chunks.id AS chunk_id,
+                chunks.document_id AS document_id,
+                documents.title AS document_title,
+                chunks.chunk_index AS chunk_index,
+                chunks.content AS content,
+                chunks.embedding_json AS embedding_json
+            FROM chunks
+            JOIN documents ON documents.id = chunks.document_id
+            WHERE EXISTS (
+                SELECT 1
+                FROM collection_sources
+                WHERE collection_sources.collection_id = ?
+                  AND collection_sources.document_id = chunks.document_id
+                  AND collection_sources.status = 'active'
+            )
+            """,
+            (collection_id,),
+        ).fetchall()
+
+    scored: list[SourceChunk] = []
+    for row in rows:
+        raw_embedding = json.loads(str(row["embedding_json"]))
+        if not isinstance(raw_embedding, list):
+            raise EmbeddingIndexCompatibilityError(
+                "Stored collection embedding is invalid; reset and re-ingest the index."
+            )
+        embedding = [float(value) for value in raw_embedding]
+        if len(embedding) != len(query_embedding):
+            raise EmbeddingIndexCompatibilityError(
+                "Embedding dimension mismatch in collection retrieval. "
+                "Reset the index and re-ingest documents."
+            )
+        raw_score = cosine_similarity(query_embedding, embedding)
+        if raw_score < minimum_score:
+            continue
+        scored.append(
+            SourceChunk(
+                chunk_id=str(row["chunk_id"]),
+                document_id=str(row["document_id"]),
+                document_title=str(row["document_title"]),
+                chunk_index=int(row["chunk_index"]),
+                score=round(raw_score, 6),
+                content=str(row["content"]),
+                collection_id=collection_id,
+            )
+        )
+
+    scored.sort(key=lambda item: item.score, reverse=True)
+    return scored[:limit]
 
 
 def _annotate_dense(sources: Sequence[SourceChunk]) -> list[SourceChunk]:
@@ -133,28 +220,57 @@ def lexical_query_from_text(text: str) -> str:
     return " OR ".join(terms)
 
 
-def _search_lexical(storage: Storage, query_text: str, limit: int) -> list[SourceChunk]:
+def _search_lexical(
+    storage: Storage,
+    query_text: str,
+    limit: int,
+    collection_id: str | None = None,
+) -> list[SourceChunk]:
     query = lexical_query_from_text(query_text)
     if not query:
         return []
 
     try:
         with storage.database.connect() as connection:
-            rows = connection.execute(
-                """
-                SELECT
-                    chunk_id,
-                    document_id,
-                    document_title,
-                    chunk_index,
-                    content
-                FROM chunks_fts
-                WHERE chunks_fts MATCH ?
-                ORDER BY bm25(chunks_fts, 0.0, 0.0, 1.5, 0.0, 1.0)
-                LIMIT ?
-                """,
-                (query, limit),
-            ).fetchall()
+            if collection_id is None:
+                rows = connection.execute(
+                    """
+                    SELECT
+                        chunk_id,
+                        document_id,
+                        document_title,
+                        chunk_index,
+                        content
+                    FROM chunks_fts
+                    WHERE chunks_fts MATCH ?
+                    ORDER BY bm25(chunks_fts, 0.0, 0.0, 1.5, 0.0, 1.0)
+                    LIMIT ?
+                    """,
+                    (query, limit),
+                ).fetchall()
+            else:
+                rows = connection.execute(
+                    """
+                    SELECT
+                        chunk_id,
+                        document_id,
+                        document_title,
+                        chunk_index,
+                        content
+                    FROM chunks_fts
+                    WHERE chunks_fts MATCH ?
+                      AND EXISTS (
+                          SELECT 1
+                          FROM collection_sources
+                          WHERE collection_sources.collection_id = ?
+                            AND collection_sources.document_id = chunks_fts.document_id
+                            AND collection_sources.status = 'active'
+                      )
+                    ORDER BY bm25(chunks_fts, 0.0, 0.0, 1.5, 0.0, 1.0)
+                    LIMIT ?
+                    """,
+                    (query, collection_id, limit),
+                ).fetchall()
     except sqlite3.OperationalError as exc:
         message = str(exc).lower()
         if "no such table" in message or "fts5" in message:
@@ -169,6 +285,7 @@ def _search_lexical(storage: Storage, query_text: str, limit: int) -> list[Sourc
             chunk_index=int(row["chunk_index"]),
             score=0.0,
             content=str(row["content"]),
+            collection_id=collection_id,
         )
         for row in rows
     ]
