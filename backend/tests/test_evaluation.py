@@ -28,6 +28,7 @@ async def test_hash_evaluation_matches_recorded_baseline() -> None:
     assert report.question_version == baseline["question_version"]
     assert report.embedding_provider == baseline["embedding_provider"]
     assert report.embedding_model == baseline["embedding_model"]
+    assert report.retrieval_mode == "dense"
     assert report.retrieval_min_score == pytest.approx(baseline["retrieval_min_score"])
 
     recorded_metrics = baseline["metrics"]
@@ -35,6 +36,32 @@ async def test_hash_evaluation_matches_recorded_baseline() -> None:
     assert actual_metrics.keys() == recorded_metrics.keys()
     for metric, expected in recorded_metrics.items():
         assert actual_metrics[metric] == pytest.approx(expected), metric
+
+
+@pytest.mark.asyncio
+async def test_hybrid_evaluation_is_no_worse_than_dense_baseline() -> None:
+    corpus = load_corpus(_EVALUATION_DIR / "corpus.json")
+    questions = load_questions(_EVALUATION_DIR / "questions.json")
+    provider = HashEmbeddingProvider()
+
+    dense = await run_evaluation(corpus, questions, provider, retrieval_mode="dense")
+    hybrid = await run_evaluation(corpus, questions, provider, retrieval_mode="hybrid")
+
+    assert hybrid.metrics.document_hit_at_1 >= dense.metrics.document_hit_at_1
+    assert (
+        hybrid.metrics.document_hit_at_requested_k
+        >= dense.metrics.document_hit_at_requested_k
+    )
+    assert (
+        hybrid.metrics.macro_document_recall_at_requested_k
+        >= dense.metrics.macro_document_recall_at_requested_k
+    )
+    assert (
+        hybrid.metrics.macro_evidence_recall_at_requested_k
+        >= dense.metrics.macro_evidence_recall_at_requested_k
+    )
+    assert hybrid.metrics.mean_reciprocal_rank >= dense.metrics.mean_reciprocal_rank
+    assert hybrid.metrics.query_success_rate >= dense.metrics.query_success_rate
 
 
 @pytest.mark.asyncio
@@ -91,9 +118,11 @@ async def test_evaluation_report_has_human_and_machine_readable_forms() -> None:
     machine = report.model_dump(mode="json")
 
     assert "Document hit@1" in human
-    assert "Minimum score" in human
+    assert "Retrieval mode" in human
+    assert "Minimum dense score" in human
     assert "Negative no-answer accuracy" in human
     assert "atlas-multi-evidence" in human
+    assert machine["retrieval_mode"] == "dense"
     assert machine["retrieval_min_score"] == 0.0
     assert machine["metrics"]["total_queries"] == 8
     assert len(machine["queries"]) == 8
