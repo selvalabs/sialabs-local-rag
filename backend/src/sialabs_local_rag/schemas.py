@@ -110,6 +110,9 @@ class SourceChunk(BaseModel):
     chunk_index: int
     score: float
     content: str
+    page_number: int | None = None
+    section_title: str | None = None
+    source_locator: str | None = None
     dense_score: float | None = None
     dense_rank: int | None = None
     lexical_rank: int | None = None
