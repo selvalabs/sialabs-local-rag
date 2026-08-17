@@ -2,28 +2,27 @@
 
 ## Objective
 
-Validate application behavior locally and in CI without requiring Ollama, a GPU or downloaded model files.
+Validate local application behavior in CI without requiring Ollama, a GPU,
+downloaded models or an installed OCR runtime.
 
 ## Test layers
 
 ### Backend unit and service tests
 
-- text normalization and chunking;
-- vector normalization and cosine similarity;
-- provider and service orchestration;
-- local storage behavior;
+- text/structure-aware chunking;
+- vector math and provider/service orchestration;
+- SQLite migrations and storage behavior;
 - embedding-index lifecycle and local data retention;
-- deterministic retrieval-quality baseline.
+- dense/hybrid retrieval and conversational retrieval;
+- deterministic retrieval-quality and structure-sensitive evaluation;
+- DOCX/PPTX/XLSX parsers using generated in-memory OOXML packages;
+- optional OCR capability/error handling with mocked local runtimes.
 
 ### API tests
 
-- health check;
-- document creation and duplicate handling;
-- chat responses with retrieved sources;
-- Markdown upload;
-- text-based PDF upload;
-- unreadable PDF rejection;
-- unsupported extension rejection.
+API coverage includes document creation, duplicate handling, chat/retrieval sources,
+Markdown, multipage text PDF, DOCX, PPTX and XLSX ingestion, structured source
+locators, unsupported files and actionable missing-OCR behavior.
 
 ### Frontend checks
 
@@ -42,7 +41,8 @@ From the repository root:
 powershell -ExecutionPolicy Bypass -File .\scripts\validate-local.ps1
 ```
 
-The script performs backend dependency resolution, Ruff checks, pytest, mypy, frontend installation, TypeScript typecheck, frontend build and Docker Compose configuration validation.
+The base validation path intentionally does **not** install OCR packages or require
+Tesseract.
 
 ## Individual commands
 
@@ -51,7 +51,6 @@ Backend:
 ```powershell
 cd backend
 uv sync --dev
-uv run ruff check . --fix
 uv run ruff check .
 uv run pytest
 uv run mypy src
@@ -60,13 +59,11 @@ uv run mypy src
 Backend with coverage:
 
 ```powershell
-cd backend
-uv run --with pytest-cov pytest --cov=sialabs_local_rag --cov-report=term-missing --cov-report=xml
+uv run --with pytest-cov pytest `
+  --cov=sialabs_local_rag `
+  --cov-report=term-missing `
+  --cov-report=xml
 ```
-
-This prints a terminal coverage summary and writes `backend/coverage.xml` for CI artifacts or later integration with coverage reporting services.
-
-No minimum coverage threshold is enforced yet. The current goal is to make coverage visible before deciding a realistic threshold.
 
 Frontend:
 
@@ -83,46 +80,74 @@ Docker Compose:
 docker compose config
 ```
 
-## Retrieval quality evaluation
+## Retrieval evaluation
 
-The repository includes a fixed corpus, expected evidence and negative/no-answer cases under `backend/evaluation/`.
-
-Deterministic CI-compatible run:
+The fixed repository-safe retrieval corpus lives under `backend/evaluation/`.
 
 ```powershell
 cd backend
-uv run python -m sialabs_local_rag.evaluation --provider hash
+uv run python -m sialabs_local_rag.evaluation --provider hash --mode dense
+uv run python -m sialabs_local_rag.evaluation --provider hash --mode hybrid
 ```
 
-Optional real local embedding run:
+Real EmbeddingGemma evaluation is optional when Ollama is available locally.
+See `RETRIEVAL_EVALUATION.md` for metrics and update rules.
+
+## Office fixture strategy
+
+Office parser tests do not store large binary documents in Git. Tests construct
+minimal DOCX/PPTX/XLSX ZIP/XML packages in memory with exact marker values such as
+`DOCX-77`, `PPTX-88` and `XLSX-99`.
+
+The API tests then exercise the complete path:
+
+1. upload generated Office bytes;
+2. parse structure;
+3. chunk and embed;
+4. persist source metadata;
+5. retrieve by exact evidence;
+6. assert the expected section/slide/sheet/range citation.
+
+This keeps fixtures inspectable, deterministic and repository-safe.
+
+## Optional local OCR validation
+
+Ordinary CI does not install Pillow, PyMuPDF, pytesseract or Tesseract. Instead,
+unit tests inject small fake OCR/image/PDF runtimes and verify:
+
+- image OCR creates an `image:*` locator;
+- scanned-PDF OCR preserves page numbers/locators;
+- a textless valid PDF routes to the OCR fallback;
+- missing optional dependencies produce an actionable error;
+- the HTTP API exposes missing OCR as `503` rather than a generic parse failure.
+
+For a manual real OCR smoke test, install the optional Python packages:
 
 ```powershell
-$env:OLLAMA_EMBED_MODEL = "embeddinggemma"
-uv run python -m sialabs_local_rag.evaluation --provider ollama
+cd backend
+uv pip install -r requirements-ocr.txt
 ```
 
-The pytest suite recomputes the deterministic hash evaluation and compares it with the recorded baseline. This makes retrieval behavior changes explicit in future PRs.
+Install Tesseract OCR locally and ensure the `tesseract` command is available on
+`PATH`, then upload a small scanned PDF or image through the local API/UI.
 
-See [`RETRIEVAL_EVALUATION.md`](RETRIEVAL_EVALUATION.md) for the corpus design, metrics, current baseline and update rules.
+Real OCR accuracy is environment/language dependent, so it is deliberately not a
+mandatory deterministic CI gate.
 
 ## CI strategy
 
-CI uses deterministic mock/hash providers so validation does not depend on local hardware or downloaded model availability. Real Ollama execution is validated separately through explicit local smoke, end-to-end and retrieval-evaluation checks.
+CI uses deterministic mock/hash providers and generated document fixtures. The
+backend job runs Ruff, pytest with coverage and mypy. The frontend job runs
+TypeScript typecheck and a production build.
 
-The backend CI job runs pytest with coverage and uploads `coverage.xml` as a workflow artifact. Coverage is informational for now and does not fail the build by percentage.
-
-## Local AI validation
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\check-ollama.ps1 -RunSmokeRequests
-```
-
-See [`VALIDATION.md`](VALIDATION.md) for the validated model combinations and scope.
+Coverage remains informational; no global percentage threshold is enforced yet.
 
 ## Current gaps
 
 - No browser-driven end-to-end test suite.
 - No enforced minimum coverage threshold.
-- The retrieval evaluation corpus is intentionally small and project-specific, not a general benchmark.
-- No load or sustained-latency benchmark.
-- No automated OCR or scanned-PDF test path because OCR is unsupported.
+- The retrieval corpus is intentionally small and project-specific.
+- No load/sustained-latency benchmark.
+- No mandatory real-Tesseract OCR accuracy benchmark in CI.
+- No pixel-perfect Office layout/table reconstruction tests; those are outside the
+  current ingestion scope.
