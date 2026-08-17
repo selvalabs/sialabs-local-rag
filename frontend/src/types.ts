@@ -34,6 +34,7 @@ export type PublicConfig = {
   embedding_provider: string
   embedding_model: string
   retrieval_top_k: number
+  retrieval_min_score: number
   chunk_size: number
   chunk_overlap: number
 }

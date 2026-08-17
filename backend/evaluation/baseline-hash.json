@@ -3,6 +3,7 @@
   "question_version": 1,
   "embedding_provider": "hash",
   "embedding_model": "hash-bow-128",
+  "retrieval_min_score": 0.0,
   "metrics": {
     "total_queries": 8,
     "positive_queries": 7,
@@ -10,14 +11,14 @@
     "document_hit_at_1": 0.7142857142857143,
     "document_hit_at_requested_k": 1.0,
     "macro_document_recall_at_requested_k": 1.0,
-    "macro_evidence_recall_at_requested_k": 0.9285714285714286,
+    "macro_evidence_recall_at_requested_k": 1.0,
     "mean_reciprocal_rank": 0.8333333333333334,
     "negative_no_answer_accuracy": 0.0,
-    "query_success_rate": 0.75
+    "query_success_rate": 0.875
   },
   "known_gaps": [
-    "The negative Apollo query still returns unrelated chunks because the current retriever has no relevance gate.",
-    "The Atlas query retrieves only one of two required evidence chunks at top_k=2 because current source diversification forces a second document before another chunk from the same document.",
+    "The Atlas multi-evidence case now retrieves both required chunks at top_k=2 after removing forced per-document diversification.",
+    "The negative Apollo query still has positive hash-collision scores at the conservative 0.0 default threshold, so hash mode is not suitable for calibrating a semantic-model relevance cutoff.",
     "Hash embeddings are deterministic CI scaffolding and do not represent semantic embedding quality."
   ]
 }

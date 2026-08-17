@@ -92,6 +92,7 @@ class EvaluationReport(BaseModel):
     question_version: int
     embedding_provider: str
     embedding_model: str
+    retrieval_min_score: float
     metrics: EvaluationMetrics
     queries: list[QueryEvaluationResult]
 
@@ -108,6 +109,7 @@ async def run_evaluation(
     corpus: EvaluationCorpus,
     question_set: EvaluationQuestionSet,
     embedding_provider: EmbeddingProvider,
+    minimum_score: float = 0.0,
 ) -> EvaluationReport:
     with TemporaryDirectory(prefix="sialabs-rag-eval-") as temp_dir:
         database = Database(f"sqlite:///{Path(temp_dir) / 'evaluation.db'}")
@@ -117,13 +119,21 @@ async def run_evaluation(
 
         results: list[QueryEvaluationResult] = []
         for question in question_set.questions:
-            results.append(await _evaluate_question(storage, question, embedding_provider))
+            results.append(
+                await _evaluate_question(
+                    storage,
+                    question,
+                    embedding_provider,
+                    minimum_score,
+                )
+            )
 
     return EvaluationReport(
         corpus_version=corpus.version,
         question_version=question_set.version,
         embedding_provider=embedding_provider.name,
         embedding_model=embedding_provider.model,
+        retrieval_min_score=minimum_score,
         metrics=_aggregate_metrics(results),
         queries=results,
     )
@@ -159,6 +169,7 @@ async def _evaluate_question(
     storage: Storage,
     question: EvaluationQuestion,
     embedding_provider: EmbeddingProvider,
+    minimum_score: float,
 ) -> QueryEvaluationResult:
     query_embedding = (await embedding_provider.embed([question.question]))[0]
     sources = storage.search_chunks(
@@ -166,6 +177,7 @@ async def _evaluate_question(
         top_k=question.top_k,
         embedding_provider=embedding_provider.name,
         embedding_model=embedding_provider.model,
+        minimum_score=minimum_score,
     )
 
     retrieved_titles = [source.document_title for source in sources]
@@ -286,6 +298,7 @@ def format_human_report(report: EvaluationReport) -> str:
     metrics = report.metrics
     lines = [
         f"Embedding: {report.embedding_provider}/{report.embedding_model}",
+        f"Minimum score: {report.retrieval_min_score:.4f}",
         f"Queries: {metrics.total_queries} "
         f"({metrics.positive_queries} positive, {metrics.negative_queries} negative)",
         f"Document hit@1: {metrics.document_hit_at_1:.4f}",
@@ -324,6 +337,12 @@ def build_argument_parser() -> argparse.ArgumentParser:
         help="Embedding provider. Ollama uses OLLAMA_BASE_URL/OLLAMA_EMBED_MODEL settings.",
     )
     parser.add_argument(
+        "--min-score",
+        type=float,
+        default=0.0,
+        help="Minimum cosine similarity required for a chunk to enter the result set.",
+    )
+    parser.add_argument(
         "--corpus",
         type=Path,
         default=_DEFAULT_EVALUATION_DIR / "corpus.json",
@@ -349,6 +368,7 @@ async def _run_from_args(args: argparse.Namespace) -> EvaluationReport:
         corpus=load_corpus(cast(Path, args.corpus)),
         question_set=load_questions(cast(Path, args.questions)),
         embedding_provider=provider,
+        minimum_score=cast(float, args.min_score),
     )
 
 

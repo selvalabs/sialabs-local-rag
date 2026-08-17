@@ -50,6 +50,7 @@ class PublicConfigResponse(BaseModel):
     embedding_provider: str
     embedding_model: str
     retrieval_top_k: int
+    retrieval_min_score: float
     chunk_size: int
     chunk_overlap: int
 

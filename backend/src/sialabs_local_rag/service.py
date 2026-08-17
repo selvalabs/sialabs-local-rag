@@ -95,11 +95,15 @@ class RagService:
             top_k=selected_top_k,
             embedding_provider=self.embedding_provider.name,
             embedding_model=self.embedding_provider.model,
+            minimum_score=self.settings.retrieval_min_score,
         )
         provider_runtime_options = to_provider_runtime_options(runtime_options)
 
         if not sources:
-            answer = "Não encontrei documentos indexados para responder essa pergunta."
+            answer = (
+                "Não encontrei evidência relevante suficiente nos documentos indexados "
+                "para responder essa pergunta."
+            )
         else:
             user_prompt = build_rag_prompt(question=question, sources=sources)
             answer = await self.chat_provider.generate(

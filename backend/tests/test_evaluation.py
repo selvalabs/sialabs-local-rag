@@ -28,6 +28,7 @@ async def test_hash_evaluation_matches_recorded_baseline() -> None:
     assert report.question_version == baseline["question_version"]
     assert report.embedding_provider == baseline["embedding_provider"]
     assert report.embedding_model == baseline["embedding_model"]
+    assert report.retrieval_min_score == pytest.approx(baseline["retrieval_min_score"])
 
     recorded_metrics = baseline["metrics"]
     actual_metrics = report.metrics.model_dump()
@@ -37,7 +38,7 @@ async def test_hash_evaluation_matches_recorded_baseline() -> None:
 
 
 @pytest.mark.asyncio
-async def test_baseline_exposes_known_multi_chunk_and_no_answer_gaps() -> None:
+async def test_baseline_captures_atlas_improvement_and_remaining_no_answer_gap() -> None:
     report = await run_evaluation(
         load_corpus(_EVALUATION_DIR / "corpus.json"),
         load_questions(_EVALUATION_DIR / "questions.json"),
@@ -47,17 +48,35 @@ async def test_baseline_exposes_known_multi_chunk_and_no_answer_gaps() -> None:
 
     atlas = results["atlas-multi-evidence"]
     assert atlas.document_recall_at_k == 1.0
-    assert atlas.evidence_recall_at_k == 0.5
-    assert atlas.success is False
+    assert atlas.evidence_recall_at_k == 1.0
+    assert atlas.success is True
     assert [source.document_title for source in atlas.retrieved] == [
         "Atlas Reactor Procedure",
-        "Atlas Training Bulletin",
+        "Atlas Reactor Procedure",
     ]
+    assert [source.chunk_index for source in atlas.retrieved] == [0, 1]
 
     negative = results["negative-apollo"]
     assert negative.no_answer_expected is True
     assert negative.no_answer_observed is False
     assert negative.success is False
+
+
+@pytest.mark.asyncio
+async def test_evaluation_can_sweep_minimum_score() -> None:
+    report = await run_evaluation(
+        load_corpus(_EVALUATION_DIR / "corpus.json"),
+        load_questions(_EVALUATION_DIR / "questions.json"),
+        HashEmbeddingProvider(),
+        minimum_score=0.25,
+    )
+
+    assert report.retrieval_min_score == 0.25
+    assert all(
+        source.score >= 0.25
+        for result in report.queries
+        for source in result.retrieved
+    )
 
 
 @pytest.mark.asyncio
@@ -72,7 +91,9 @@ async def test_evaluation_report_has_human_and_machine_readable_forms() -> None:
     machine = report.model_dump(mode="json")
 
     assert "Document hit@1" in human
+    assert "Minimum score" in human
     assert "Negative no-answer accuracy" in human
     assert "atlas-multi-evidence" in human
+    assert machine["retrieval_min_score"] == 0.0
     assert machine["metrics"]["total_queries"] == 8
     assert len(machine["queries"]) == 8

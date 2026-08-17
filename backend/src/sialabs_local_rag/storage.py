@@ -200,6 +200,7 @@ class Storage:
         top_k: int,
         embedding_provider: str,
         embedding_model: str,
+        minimum_score: float = 0.0,
     ) -> list[SourceChunk]:
         with self.database.connect() as connection:
             chunk_count = self._count_chunks(connection)
@@ -237,20 +238,22 @@ class Storage:
         scored: list[SourceChunk] = []
         for row in rows:
             embedding = self._embedding_from_json(str(row["embedding_json"]))
-            score = cosine_similarity(query_embedding, embedding)
+            raw_score = cosine_similarity(query_embedding, embedding)
+            if raw_score < minimum_score:
+                continue
             scored.append(
                 SourceChunk(
                     chunk_id=str(row["chunk_id"]),
                     document_id=str(row["document_id"]),
                     document_title=str(row["document_title"]),
                     chunk_index=int(row["chunk_index"]),
-                    score=round(score, 6),
+                    score=round(raw_score, 6),
                     content=str(row["content"]),
                 )
             )
 
         ranked = sorted(scored, key=lambda item: item.score, reverse=True)
-        return self._diversify_sources_by_document(ranked, top_k)
+        return ranked[:top_k]
 
     def get_embedding_index_status(
         self,
@@ -498,33 +501,6 @@ class Storage:
     def _delete_chat_history(connection: sqlite3.Connection) -> int:
         cursor = connection.execute("DELETE FROM chat_messages")
         return max(0, cursor.rowcount)
-
-    @staticmethod
-    def _diversify_sources_by_document(
-        ranked_sources: Sequence[SourceChunk],
-        top_k: int,
-    ) -> list[SourceChunk]:
-        selected: list[SourceChunk] = []
-        selected_chunk_ids: set[str] = set()
-        selected_document_ids: set[str] = set()
-
-        for source in ranked_sources:
-            if source.document_id in selected_document_ids:
-                continue
-            selected.append(source)
-            selected_chunk_ids.add(source.chunk_id)
-            selected_document_ids.add(source.document_id)
-            if len(selected) >= top_k:
-                return selected
-
-        for source in ranked_sources:
-            if source.chunk_id in selected_chunk_ids:
-                continue
-            selected.append(source)
-            if len(selected) >= top_k:
-                return selected
-
-        return selected
 
     @staticmethod
     def _document_from_row(row: sqlite3.Row) -> DocumentResponse:
