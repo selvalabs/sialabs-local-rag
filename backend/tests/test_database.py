@@ -22,7 +22,13 @@ def test_fresh_database_records_current_schema_version(tmp_path: Path) -> None:
                 "SELECT name FROM sqlite_master WHERE type = 'table'"
             ).fetchall()
         }
-    assert {"schema_version", "documents", "chunks", "chat_messages"} <= tables
+    assert {
+        "schema_version",
+        "documents",
+        "chunks",
+        "chat_messages",
+        "embedding_index",
+    } <= tables
 
 
 def test_init_schema_is_idempotent(tmp_path: Path) -> None:
@@ -42,13 +48,18 @@ def test_pre_vnext_database_is_adopted_without_losing_data(tmp_path: Path) -> No
 
     database.init_schema()
 
-    assert database.schema_version() == 1
+    assert database.schema_version() == database_module.latest_schema_version()
     with database.connect() as connection:
         row = connection.execute(
             "SELECT title FROM documents WHERE id = 'legacy-document'"
         ).fetchone()
+        embedding_metadata = connection.execute(
+            "SELECT provider, model, dimension FROM embedding_index WHERE singleton = 1"
+        ).fetchone()
+
     assert row is not None
     assert row["title"] == "Legacy document"
+    assert embedding_metadata is None
 
 
 def test_partial_legacy_schema_is_rejected_transactionally(tmp_path: Path) -> None:
@@ -91,6 +102,7 @@ def test_failed_migration_rolls_back_schema_and_version(
 ) -> None:
     database = Database(f"sqlite:///{tmp_path / 'rollback.db'}")
     database.init_schema()
+    baseline_version = database.schema_version()
 
     def failing_migration(connection: sqlite3.Connection) -> None:
         connection.execute("CREATE TABLE should_be_rolled_back (id INTEGER PRIMARY KEY)")
@@ -98,14 +110,18 @@ def test_failed_migration_rolls_back_schema_and_version(
 
     migrations = (
         *database_module.MIGRATIONS,
-        Migration(version=2, name="intentional-failure", apply=failing_migration),
+        Migration(
+            version=database_module.latest_schema_version() + 1,
+            name="intentional-failure",
+            apply=failing_migration,
+        ),
     )
     monkeypatch.setattr(database_module, "MIGRATIONS", migrations)
 
     with pytest.raises(DatabaseError, match="intentional migration failure"):
         database.init_schema()
 
-    assert database.schema_version() == 1
+    assert database.schema_version() == baseline_version
     with database.connect() as connection:
         rolled_back_table = connection.execute(
             """
