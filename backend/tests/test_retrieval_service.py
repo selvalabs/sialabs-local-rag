@@ -35,7 +35,9 @@ class FailIfCalledChatProvider:
         raise AssertionError("Chat generation must not run when retrieval returns no evidence.")
 
 
-async def test_relevance_gate_returns_insufficient_evidence_without_llm_call(tmp_path: Path) -> None:
+async def test_relevance_gate_returns_insufficient_evidence_without_llm_call(
+    tmp_path: Path,
+) -> None:
     database = Database(f"sqlite:///{tmp_path / 'service.db'}")
     database.init_schema()
     settings = Settings(
