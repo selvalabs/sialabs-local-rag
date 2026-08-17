@@ -134,6 +134,92 @@ def _sanitize_chat_source_metadata(connection: sqlite3.Connection) -> None:
         )
 
 
+def _has_table(connection: sqlite3.Connection, table_name: str) -> bool:
+    row = connection.execute(
+        "SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name = ?",
+        (table_name,),
+    ).fetchone()
+    return row is not None
+
+
+def _ensure_optional_fts_schema(connection: sqlite3.Connection) -> None:
+    """Create and synchronize the optional FTS5 chunk index when SQLite supports it."""
+
+    fts_existed = _has_table(connection, "chunks_fts")
+    try:
+        connection.execute(
+            """
+            CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(
+                chunk_id UNINDEXED,
+                document_id UNINDEXED,
+                document_title,
+                chunk_index UNINDEXED,
+                content,
+                tokenize='unicode61 remove_diacritics 2'
+            )
+            """
+        )
+    except sqlite3.OperationalError as exc:
+        if "fts5" in str(exc).lower():
+            return
+        raise
+
+    connection.execute(
+        """
+        CREATE TRIGGER IF NOT EXISTS chunks_fts_after_insert
+        AFTER INSERT ON chunks
+        BEGIN
+            INSERT INTO chunks_fts (
+                chunk_id, document_id, document_title, chunk_index, content
+            )
+            SELECT NEW.id, NEW.document_id, documents.title, NEW.chunk_index, NEW.content
+            FROM documents
+            WHERE documents.id = NEW.document_id;
+        END
+        """
+    )
+    connection.execute(
+        """
+        CREATE TRIGGER IF NOT EXISTS chunks_fts_after_delete
+        AFTER DELETE ON chunks
+        BEGIN
+            DELETE FROM chunks_fts WHERE chunk_id = OLD.id;
+        END
+        """
+    )
+    connection.execute(
+        """
+        CREATE TRIGGER IF NOT EXISTS chunks_fts_after_update
+        AFTER UPDATE OF content, document_id, chunk_index ON chunks
+        BEGIN
+            DELETE FROM chunks_fts WHERE chunk_id = OLD.id;
+            INSERT INTO chunks_fts (
+                chunk_id, document_id, document_title, chunk_index, content
+            )
+            SELECT NEW.id, NEW.document_id, documents.title, NEW.chunk_index, NEW.content
+            FROM documents
+            WHERE documents.id = NEW.document_id;
+        END
+        """
+    )
+
+    if not fts_existed:
+        connection.execute(
+            """
+            INSERT INTO chunks_fts (
+                chunk_id, document_id, document_title, chunk_index, content
+            )
+            SELECT chunks.id, chunks.document_id, documents.title, chunks.chunk_index, chunks.content
+            FROM chunks
+            JOIN documents ON documents.id = chunks.document_id
+            """
+        )
+
+
+def _create_fts_schema_migration(connection: sqlite3.Connection) -> None:
+    _ensure_optional_fts_schema(connection)
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(version=1, name="baseline-local-rag-schema", apply=_create_core_schema),
     Migration(version=2, name="embedding-index-metadata", apply=_create_embedding_index_schema),
@@ -142,6 +228,7 @@ MIGRATIONS: tuple[Migration, ...] = (
         name="sanitize-chat-source-metadata",
         apply=_sanitize_chat_source_metadata,
     ),
+    Migration(version=4, name="optional-fts5-retrieval-index", apply=_create_fts_schema_migration),
 )
 
 _CORE_TABLES = {"documents", "chunks", "chat_messages"}
@@ -190,6 +277,7 @@ class Database:
                 self._write_schema_version(connection, migration.version)
                 current_version = migration.version
 
+            _ensure_optional_fts_schema(connection)
             connection.commit()
         except Exception as exc:
             connection.rollback()
@@ -257,8 +345,4 @@ class Database:
 
     @staticmethod
     def _table_exists(connection: sqlite3.Connection, table_name: str) -> bool:
-        row = connection.execute(
-            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?",
-            (table_name,),
-        ).fetchone()
-        return row is not None
+        return _has_table(connection, table_name)
