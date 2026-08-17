@@ -12,9 +12,11 @@ from uuid import uuid4
 from sialabs_local_rag.chunking import estimate_tokens
 from sialabs_local_rag.database import Database
 from sialabs_local_rag.schemas import (
+    ChatHistoryClearResponse,
     DocumentResponse,
     IndexResetResponse,
     IndexStatusResponse,
+    LocalDataResetResponse,
     SourceChunk,
 )
 from sialabs_local_rag.vector_math import cosine_similarity
@@ -54,7 +56,7 @@ class EmbeddingIndexReindexRequiredError(EmbeddingIndexCompatibilityError):
 
 
 class Storage:
-    """SQLite persistence layer for documents, chunks and chat traces."""
+    """SQLite persistence layer for documents, chunks and lightweight chat traces."""
 
     def __init__(self, database: Database) -> None:
         self.database = database
@@ -165,7 +167,10 @@ class Storage:
     def delete_document(self, document_id: str) -> bool:
         with self.database.connect() as connection:
             cursor = connection.execute("DELETE FROM documents WHERE id = ?", (document_id,))
-            return cursor.rowcount > 0
+            if cursor.rowcount <= 0:
+                return False
+            self._delete_chat_history(connection)
+            return True
 
     def assert_embedding_compatible(self, provider: str, model: str) -> None:
         """Reject legacy or provider/model mismatches before an embedding request is made."""
@@ -323,6 +328,7 @@ class Storage:
             chunk_count = self._count_chunks(connection)
             connection.execute("DELETE FROM documents")
             connection.execute("DELETE FROM embedding_index WHERE singleton = 1")
+            self._delete_chat_history(connection)
 
         return IndexResetResponse(
             documents_deleted=document_count,
@@ -339,7 +345,7 @@ class Storage:
         sources: Sequence[SourceChunk],
     ) -> None:
         metadata = {
-            "sources": [source.model_dump() for source in sources],
+            "sources": [source.model_dump(exclude={"content"}) for source in sources],
         }
         with self.database.connect() as connection:
             connection.execute(
@@ -361,6 +367,26 @@ class Storage:
                     utc_now_iso(),
                 ),
             )
+
+    def clear_chat_history(self) -> ChatHistoryClearResponse:
+        with self.database.connect() as connection:
+            deleted = self._delete_chat_history(connection)
+        return ChatHistoryClearResponse(messages_deleted=deleted)
+
+    def reset_local_data(self) -> LocalDataResetResponse:
+        with self.database.connect() as connection:
+            document_count = self._count_documents(connection)
+            chunk_count = self._count_chunks(connection)
+            chat_count = self._count_chat_messages(connection)
+            connection.execute("DELETE FROM documents")
+            connection.execute("DELETE FROM embedding_index WHERE singleton = 1")
+            self._delete_chat_history(connection)
+
+        return LocalDataResetResponse(
+            documents_deleted=document_count,
+            chunks_deleted=chunk_count,
+            chat_messages_deleted=chat_count,
+        )
 
     def _ensure_embedding_index_for_write(
         self,
@@ -462,6 +488,16 @@ class Storage:
     def _count_chunks(connection: sqlite3.Connection) -> int:
         row = connection.execute("SELECT COUNT(*) AS count FROM chunks").fetchone()
         return int(row["count"]) if row is not None else 0
+
+    @staticmethod
+    def _count_chat_messages(connection: sqlite3.Connection) -> int:
+        row = connection.execute("SELECT COUNT(*) AS count FROM chat_messages").fetchone()
+        return int(row["count"]) if row is not None else 0
+
+    @staticmethod
+    def _delete_chat_history(connection: sqlite3.Connection) -> int:
+        cursor = connection.execute("DELETE FROM chat_messages")
+        return max(0, cursor.rowcount)
 
     @staticmethod
     def _diversify_sources_by_document(

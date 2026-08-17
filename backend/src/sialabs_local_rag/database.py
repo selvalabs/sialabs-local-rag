@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sqlite3
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -91,9 +92,52 @@ def _create_embedding_index_schema(connection: sqlite3.Connection) -> None:
     )
 
 
+def _sanitize_chat_source_metadata(connection: sqlite3.Connection) -> None:
+    """Remove persisted source text from chat metadata while keeping trace identifiers."""
+
+    allowed_source_keys = {
+        "chunk_id",
+        "document_id",
+        "document_title",
+        "chunk_index",
+        "score",
+    }
+    rows = connection.execute("SELECT id, metadata_json FROM chat_messages").fetchall()
+
+    for row in rows:
+        raw_metadata = str(row["metadata_json"])
+        try:
+            parsed = json.loads(raw_metadata)
+        except json.JSONDecodeError:
+            parsed = {}
+
+        metadata = parsed if isinstance(parsed, dict) else {}
+        raw_sources = metadata.get("sources")
+        sanitized_sources: list[dict[str, object]] = []
+
+        if isinstance(raw_sources, list):
+            for raw_source in raw_sources:
+                if not isinstance(raw_source, dict):
+                    continue
+                sanitized_sources.append(
+                    {
+                        str(key): value
+                        for key, value in raw_source.items()
+                        if key in allowed_source_keys
+                    }
+                )
+
+        metadata["sources"] = sanitized_sources
+        connection.execute(
+            "UPDATE chat_messages SET metadata_json = ? WHERE id = ?",
+            (json.dumps(metadata, ensure_ascii=False), str(row["id"])),
+        )
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(version=1, name="baseline-local-rag-schema", apply=_create_core_schema),
     Migration(version=2, name="embedding-index-metadata", apply=_create_embedding_index_schema),
+    Migration(version=3, name="sanitize-chat-source-metadata", apply=_sanitize_chat_source_metadata),
 )
 
 _CORE_TABLES = {"documents", "chunks", "chat_messages"}

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated, cast
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Request, UploadFile, status
 
 from sialabs_local_rag.parsing import (
     DocumentParsingError,
@@ -11,6 +11,7 @@ from sialabs_local_rag.parsing import (
 )
 from sialabs_local_rag.providers import ProviderError
 from sialabs_local_rag.schemas import (
+    ChatHistoryClearResponse,
     ChatRequest,
     ChatResponse,
     DocumentCreate,
@@ -18,6 +19,7 @@ from sialabs_local_rag.schemas import (
     DocumentResponse,
     IndexResetResponse,
     IndexStatusResponse,
+    LocalDataResetResponse,
     PublicConfigResponse,
     RuntimeConfigResponse,
     RuntimeOptions,
@@ -33,6 +35,8 @@ from sialabs_local_rag.storage import (
 )
 
 MAX_UPLOAD_BYTES = 1_000_000
+_LOOPBACK_HOSTS = {"127.0.0.1", "::1"}
+_LOCAL_DATA_RESET_CONFIRMATION = "delete-all"
 
 api_router = APIRouter()
 
@@ -88,6 +92,28 @@ def get_runtime_profiles(settings: Settings) -> dict[str, RuntimeOptions]:
             temperature=settings.ollama_temperature,
         ),
     }
+
+
+def require_local_data_reset(
+    request: Request,
+    settings: Settings,
+    confirmation: str | None,
+) -> None:
+    client_host = request.client.host if request.client is not None else None
+    is_test_client = settings.app_env == "test" and client_host == "testclient"
+    if client_host not in _LOOPBACK_HOSTS and not is_test_client:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Full local data reset is only available from the loopback interface.",
+        )
+    if confirmation != _LOCAL_DATA_RESET_CONFIRMATION:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Full local data reset requires header "
+                "X-Confirm-Local-Data-Reset: delete-all."
+            ),
+        )
 
 
 @api_router.get("/config", response_model=PublicConfigResponse)
@@ -147,6 +173,27 @@ def reset_index(
     service: Annotated[RagService, Depends(get_rag_service)],
 ) -> IndexResetResponse:
     return service.reset_index()
+
+
+@api_router.delete("/chat/history", response_model=ChatHistoryClearResponse)
+def clear_chat_history(
+    storage: Annotated[Storage, Depends(get_storage)],
+) -> ChatHistoryClearResponse:
+    return storage.clear_chat_history()
+
+
+@api_router.delete("/local-data", response_model=LocalDataResetResponse)
+def reset_local_data(
+    request: Request,
+    storage: Annotated[Storage, Depends(get_storage)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    confirmation: Annotated[
+        str | None,
+        Header(alias="X-Confirm-Local-Data-Reset"),
+    ] = None,
+) -> LocalDataResetResponse:
+    require_local_data_reset(request, settings, confirmation)
+    return storage.reset_local_data()
 
 
 @api_router.post(
