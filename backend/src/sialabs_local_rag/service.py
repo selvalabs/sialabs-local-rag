@@ -10,6 +10,7 @@ from sialabs_local_rag.providers import (
     EmbeddingProvider,
     ProviderError,
 )
+from sialabs_local_rag.retrieval import RetrievalOptions, retrieve_sources
 from sialabs_local_rag.schemas import (
     ChatResponse,
     DocumentResponse,
@@ -90,12 +91,21 @@ class RagService:
             model=self.embedding_provider.model,
         )
         query_embedding = (await self.embedding_provider.embed([question]))[0]
-        sources = self.storage.search_chunks(
+        sources = retrieve_sources(
+            storage=self.storage,
+            query_text=question,
             query_embedding=query_embedding,
             top_k=selected_top_k,
             embedding_provider=self.embedding_provider.name,
             embedding_model=self.embedding_provider.model,
-            minimum_score=self.settings.retrieval_min_score,
+            options=RetrievalOptions(
+                mode=self.settings.retrieval_mode,
+                minimum_dense_score=self.settings.retrieval_min_score,
+                dense_weight=self.settings.retrieval_dense_weight,
+                lexical_weight=self.settings.retrieval_lexical_weight,
+                rrf_k=self.settings.retrieval_rrf_k,
+                candidate_multiplier=self.settings.retrieval_candidate_multiplier,
+            ),
         )
         provider_runtime_options = to_provider_runtime_options(runtime_options)
 
