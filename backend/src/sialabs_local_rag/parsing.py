@@ -7,7 +7,22 @@ from pathlib import Path
 
 from pypdf import PdfReader
 
-SUPPORTED_UPLOAD_EXTENSIONS = {".txt", ".md", ".markdown", ".pdf"}
+SUPPORTED_UPLOAD_EXTENSIONS = {
+    ".txt",
+    ".md",
+    ".markdown",
+    ".pdf",
+    ".docx",
+    ".pptx",
+    ".xlsx",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".tif",
+    ".tiff",
+}
+_IMAGE_OCR_EXTENSIONS = {".png", ".jpg", ".jpeg", ".tif", ".tiff"}
+_MAX_TEXT_PDF_PAGES = 100
 _MARKDOWN_HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*#*\s*$")
 
 
@@ -24,6 +39,9 @@ class ParsedSegment:
     content: str
     page_number: int | None = None
     section_title: str | None = None
+    slide_number: int | None = None
+    sheet_name: str | None = None
+    cell_range: str | None = None
     source_locator: str | None = None
 
 
@@ -44,11 +62,28 @@ def parse_uploaded_document_structured(filename: str, raw_content: bytes) -> Par
 
     if extension not in SUPPORTED_UPLOAD_EXTENSIONS:
         raise UnsupportedDocumentTypeError(
-            "Only .txt, .md, .markdown and .pdf uploads are supported in this MVP."
+            "Supported uploads are TXT, Markdown, PDF, DOCX, PPTX, XLSX and "
+            "optional-OCR PNG/JPG/TIFF images."
         )
 
     if extension == ".pdf":
         return _extract_pdf_document(raw_content)
+    if extension == ".docx":
+        from sialabs_local_rag.office_parsing import parse_docx_document
+
+        return parse_docx_document(raw_content)
+    if extension == ".pptx":
+        from sialabs_local_rag.office_parsing import parse_pptx_document
+
+        return parse_pptx_document(raw_content)
+    if extension == ".xlsx":
+        from sialabs_local_rag.office_parsing import parse_xlsx_document
+
+        return parse_xlsx_document(raw_content)
+    if extension in _IMAGE_OCR_EXTENSIONS:
+        from sialabs_local_rag.ocr import ocr_image_document
+
+        return ocr_image_document(raw_content, filename)
 
     content = _decode_utf8_text(raw_content)
     if extension in {".md", ".markdown"}:
@@ -121,8 +156,12 @@ def _decode_utf8_text(raw_content: bytes) -> str:
 def _extract_pdf_document(raw_content: bytes) -> ParsedDocument:
     try:
         reader = PdfReader(BytesIO(raw_content))
-        segments: list[ParsedSegment] = []
+        if len(reader.pages) > _MAX_TEXT_PDF_PAGES:
+            raise DocumentParsingError(
+                f"PDF exceeds the local limit of {_MAX_TEXT_PDF_PAGES} pages."
+            )
 
+        segments: list[ParsedSegment] = []
         for page_number, page in enumerate(reader.pages, start=1):
             page_text = (page.extract_text() or "").strip()
             if not page_text:
@@ -134,17 +173,17 @@ def _extract_pdf_document(raw_content: bytes) -> ParsedDocument:
                     source_locator=f"page:{page_number}",
                 )
             )
-
+    except DocumentParsingError:
+        raise
     except Exception as exc:
         raise DocumentParsingError(
             "PDF could not be read. Password-protected or damaged PDFs are not supported."
         ) from exc
 
     if not segments:
-        raise DocumentParsingError(
-            "PDF did not contain extractable text. OCR for scanned PDFs is out of scope "
-            "for this MVP."
-        )
+        from sialabs_local_rag.ocr import ocr_pdf_document
+
+        return ocr_pdf_document(raw_content)
 
     content = "\n\n".join(segment.content for segment in segments)
     return ParsedDocument(content=content, segments=tuple(segments))
