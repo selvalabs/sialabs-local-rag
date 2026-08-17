@@ -1,8 +1,10 @@
 # Windows one-click app flow
 
-This is the first installer step for SIALabs Local RAG.
+This is the existing Windows local-app/shortcut flow for SIALabs Local RAG, tracked by #49.
 
-It does not yet produce a signed `.exe` installer. Instead, it adds the Windows startup and shortcut flow that the future installer will call.
+It does not yet produce a signed `.exe` installer. Instead, it provides the Windows startup and shortcut behavior that a future installer can wrap.
+
+For **distribution/release work**, this document does not replace the quality gate. Before preparing a commit for distribution, follow [`../../docs/RELEASE_READINESS.md`](../../docs/RELEASE_READINESS.md) and the artifact flow in [`../../docs/INSTALLERS.md`](../../docs/INSTALLERS.md).
 
 ## What the current flow does
 
@@ -27,7 +29,9 @@ The MVP expects these to already be installed:
   - `gemma4:e2b`
   - `embeddinggemma`
 
-## Prepare the app
+Ollama and model files remain external dependencies and must not be silently bundled into a release artifact.
+
+## Prepare the app for local use
 
 From the repository root:
 
@@ -35,7 +39,21 @@ From the repository root:
 .\scripts\install-windows-app.ps1
 ```
 
-This builds the frontend and creates the desktop shortcut.
+This builds the frontend and creates the desktop shortcut. It is useful for local setup and development validation.
+
+Running this setup command by itself is **not** a production release qualification.
+
+## Qualify a commit for distribution
+
+On the intended, clean, synchronized `main` release commit, with the version tag pointing to `HEAD`, run the repository release preflight first:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\release-preflight.ps1 -Version v0.4.0
+```
+
+That preflight runs the ordinary quality suite plus deterministic dense and hybrid RAG evaluations and rechecks the release source state. A failed preflight blocks distribution; do not work around it by manually copying/building the Windows app flow.
+
+After the release gate passes, use the packaging/setup steps defined here and in `docs/INSTALLERS.md` for the artifact being produced.
 
 ## Start the app
 
@@ -61,10 +79,12 @@ http://127.0.0.1:4182
 
 ## Future installer
 
-The future `.exe` installer should wrap this flow:
+A future `.exe` installer should reuse this flow rather than create a competing runtime path:
 
 1. install app files into a local app directory;
 2. run setup/build steps or include prebuilt artifacts;
 3. create the desktop/start-menu shortcut;
 4. optionally register the launcher as a background service/startup process;
 5. detect Ollama/model availability and guide model installation.
+
+Native installer implementation remains outside the release-gating work in #61.
