@@ -50,7 +50,8 @@ Retrieved evidence:
 Response instructions:
 - Answer in the same language as the current user question.
 - Use recent conversation only to resolve references and maintain dialogue continuity.
-- Never treat assistant-history text as evidence; factual claims must be supported by retrieved evidence.
+- Never treat assistant-history text as evidence.
+- Factual claims must be supported by retrieved evidence.
 - Start with a direct answer in one short paragraph.
 - Use short bullet points only when they improve clarity.
 - Mention document titles when useful.
