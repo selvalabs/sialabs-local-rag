@@ -58,24 +58,35 @@ The backend pytest suite recomputes the hash-provider evaluation and compares it
 
 ### Current hash baseline
 
+The current relevance-first retriever uses a conservative `0.0` minimum score in the deterministic baseline.
+
 | Metric | Baseline |
 | --- | ---: |
 | Document hit@1 | 0.7143 |
 | Document hit@requested-k | 1.0000 |
 | Macro document recall@requested-k | 1.0000 |
-| Macro evidence recall@requested-k | 0.9286 |
+| Macro evidence recall@requested-k | 1.0000 |
 | MRR | 0.8333 |
 | Negative no-answer accuracy | 0.0000 |
-| Query success rate | 0.7500 |
+| Query success rate | 0.8750 |
 
-These values are intentionally not presented as good semantic-model scores. Hash embeddings are deterministic test scaffolding.
+Compared with the pre-relevance-first baseline, macro evidence recall improved from `0.9286` to `1.0000` and query success improved from `0.7500` to `0.8750`, while the other recorded aggregate metrics did not regress.
 
-The useful part of this baseline is that it records known behavior before retrieval changes:
+The concrete improvement is the Atlas case: the two strongest chunks both come from `Atlas Reactor Procedure`, so both required safeguards are now retrieved at `top_k=2`. The retriever no longer inserts a weaker second document merely to increase document diversity.
 
-1. The Apollo negative query still returns unrelated chunks because there is no relevance threshold.
-2. The Atlas query recovers the correct document but only one of its two required evidence chunks at `top_k=2`, because the current retriever forces document diversity before selecting a second chunk from the same document.
+The remaining negative-query gap is different: deterministic hash embeddings produce positive collision scores for unrelated content, so the conservative `0.0` threshold does not reject the Apollo query. Hash mode is therefore useful for deterministic ranking regression tests but not for choosing a production semantic-model score cutoff.
 
-Those are explicit regression targets for later retrieval work.
+## Relevance threshold sweeps
+
+The evaluator accepts the same minimum-score concept used by the application:
+
+```powershell
+uv run python -m sialabs_local_rag.evaluation `
+  --provider hash `
+  --min-score 0.25
+```
+
+For a real semantic embedding model, run several values and compare positive recall against no-answer behavior rather than selecting a threshold from intuition.
 
 ## Optional real EmbeddingGemma evaluation
 
@@ -85,6 +96,16 @@ When Ollama and the configured embedding model are available locally:
 $env:OLLAMA_EMBED_MODEL = "embeddinggemma"
 uv run python -m sialabs_local_rag.evaluation --provider ollama
 ```
+
+Threshold sweep example:
+
+```powershell
+uv run python -m sialabs_local_rag.evaluation --provider ollama --min-score 0.20
+uv run python -m sialabs_local_rag.evaluation --provider ollama --min-score 0.30
+uv run python -m sialabs_local_rag.evaluation --provider ollama --min-score 0.40
+```
+
+These numbers are examples of values to test, not recommended EmbeddingGemma defaults. The chosen production cutoff should be based on observed retrieval results for the actual model/runtime and representative documents.
 
 The Ollama path uses the same corpus, questions and metrics, but it is intentionally not required by CI. Hardware, local model availability and model/runtime revisions should not make ordinary repository validation nondeterministic.
 
