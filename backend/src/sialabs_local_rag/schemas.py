@@ -51,6 +51,9 @@ class PublicConfigResponse(BaseModel):
     embedding_model: str
     retrieval_top_k: int
     retrieval_min_score: float
+    retrieval_mode: Literal["dense", "hybrid"]
+    retrieval_dense_weight: float
+    retrieval_lexical_weight: float
     chunk_size: int
     chunk_overlap: int
 
@@ -110,6 +113,11 @@ class SourceChunk(BaseModel):
     chunk_index: int
     score: float
     content: str
+    dense_score: float | None = None
+    dense_rank: int | None = None
+    lexical_rank: int | None = None
+    fusion_score: float | None = None
+    retrieval_channels: list[Literal["dense", "lexical"]] = Field(default_factory=list)
 
 
 class ChatRequest(BaseModel):
