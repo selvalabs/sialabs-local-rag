@@ -1,0 +1,965 @@
+{
+  "corpus_version": 1,
+  "question_version": 2,
+  "embedding_provider": "hash",
+  "embedding_model": "hash-bow-128",
+  "retrieval_mode": "dense",
+  "retrieval_min_score": 0.0,
+  "metrics": {
+    "total_queries": 19,
+    "positive_queries": 17,
+    "negative_queries": 2,
+    "document_hit_at_1": 0.8235294117647058,
+    "document_hit_at_requested_k": 1.0,
+    "macro_document_recall_at_requested_k": 1.0,
+    "macro_evidence_recall_at_requested_k": 0.9411764705882353,
+    "mean_reciprocal_rank": 0.9019607843137255,
+    "negative_no_answer_accuracy": 0.0,
+    "query_success_rate": 0.8421052631578947
+  },
+  "category_metrics": {
+    "direct": {
+      "total_queries": 3,
+      "query_success_rate": 1.0,
+      "document_recall_at_requested_k": 1.0,
+      "evidence_recall_at_requested_k": 1.0
+    },
+    "english": {
+      "total_queries": 1,
+      "query_success_rate": 1.0,
+      "document_recall_at_requested_k": 1.0,
+      "evidence_recall_at_requested_k": 1.0
+    },
+    "exact-code": {
+      "total_queries": 3,
+      "query_success_rate": 1.0,
+      "document_recall_at_requested_k": 1.0,
+      "evidence_recall_at_requested_k": 1.0
+    },
+    "follow-up": {
+      "total_queries": 1,
+      "query_success_rate": 0.0,
+      "document_recall_at_requested_k": 1.0,
+      "evidence_recall_at_requested_k": 0.0
+    },
+    "multi-chunk": {
+      "total_queries": 1,
+      "query_success_rate": 1.0,
+      "document_recall_at_requested_k": 1.0,
+      "evidence_recall_at_requested_k": 1.0
+    },
+    "multi-document": {
+      "total_queries": 1,
+      "query_success_rate": 1.0,
+      "document_recall_at_requested_k": 1.0,
+      "evidence_recall_at_requested_k": 1.0
+    },
+    "multi-evidence": {
+      "total_queries": 2,
+      "query_success_rate": 1.0,
+      "document_recall_at_requested_k": 1.0,
+      "evidence_recall_at_requested_k": 1.0
+    },
+    "no-answer": {
+      "total_queries": 2,
+      "query_success_rate": 0.0,
+      "document_recall_at_requested_k": 0.0,
+      "evidence_recall_at_requested_k": 0.0
+    },
+    "paraphrase": {
+      "total_queries": 3,
+      "query_success_rate": 1.0,
+      "document_recall_at_requested_k": 1.0,
+      "evidence_recall_at_requested_k": 1.0
+    },
+    "portuguese": {
+      "total_queries": 1,
+      "query_success_rate": 1.0,
+      "document_recall_at_requested_k": 1.0,
+      "evidence_recall_at_requested_k": 1.0
+    },
+    "topic-switch": {
+      "total_queries": 1,
+      "query_success_rate": 1.0,
+      "document_recall_at_requested_k": 1.0,
+      "evidence_recall_at_requested_k": 1.0
+    }
+  },
+  "queries": [
+    {
+      "id": "orion-protocol",
+      "category": "direct",
+      "question": "Which protocol code is required for Project Orion emergency response?",
+      "top_k": 3,
+      "expected_documents": [
+        "Orion Operations Manual"
+      ],
+      "expected_evidence": [
+        "ZEPHYR-17"
+      ],
+      "retrieved": [
+        {
+          "document_title": "Orion Operations Manual",
+          "chunk_index": 0,
+          "score": 0.40452,
+          "dense_rank": 1,
+          "lexical_rank": null,
+          "fusion_score": null
+        },
+        {
+          "document_title": "Orion Operations Manual",
+          "chunk_index": 1,
+          "score": 0.362738,
+          "dense_rank": 2,
+          "lexical_rank": null,
+          "fusion_score": null
+        },
+        {
+          "document_title": "Orion Astronomy Notes",
+          "chunk_index": 0,
+          "score": 0.253185,
+          "dense_rank": 3,
+          "lexical_rank": null,
+          "fusion_score": null
+        }
+      ],
+      "first_relevant_rank": 1,
+      "document_hit_at_1": true,
+      "document_hit_at_k": true,
+      "document_recall_at_k": 1.0,
+      "evidence_recall_at_k": 1.0,
+      "no_answer_expected": false,
+      "no_answer_observed": false,
+      "success": true
+    },
+    {
+      "id": "orion-astronomy",
+      "category": "paraphrase",
+      "question": "Which bright stars are named in the Orion constellation notes?",
+      "top_k": 3,
+      "expected_documents": [
+        "Orion Astronomy Notes"
+      ],
+      "expected_evidence": [
+        "Betelgeuse",
+        "Rigel"
+      ],
+      "retrieved": [
+        {
+          "document_title": "Orion Astronomy Notes",
+          "chunk_index": 0,
+          "score": 0.50637,
+          "dense_rank": 1,
+          "lexical_rank": null,
+          "fusion_score": null
+        },
+        {
+          "document_title": "Harbor Finance Guide",
+          "chunk_index": 0,
+          "score": 0.414039,
+          "dense_rank": 2,
+          "lexical_rank": null,
+          "fusion_score": null
+        },
+        {
+          "document_title": "Orion Operations Manual",
+          "chunk_index": 0,
+          "score": 0.3371,
+          "dense_rank": 3,
+          "lexical_rank": null,
+          "fusion_score": null
+        }
+      ],
+      "first_relevant_rank": 1,
+      "document_hit_at_1": true,
+      "document_hit_at_k": true,
+      "document_recall_at_k": 1.0,
+      "evidence_recall_at_k": 1.0,
+      "no_answer_expected": false,
+      "no_answer_observed": false,
+      "success": true
+    },
+    {
+      "id": "harbor-budget",
+      "category": "direct",
+      "question": "How often is the Harbor program budget reviewed?",
+      "top_k": 3,
+      "expected_documents": [
+        "Harbor Finance Guide"
+      ],
+      "expected_evidence": [
+        "quarterly"
+      ],
+      "retrieved": [
+        {
+          "document_title": "Harbor Finance Guide",
+          "chunk_index": 0,
+          "score": 0.46291,
+          "dense_rank": 1,
+          "lexical_rank": null,
+          "fusion_score": null
+        },
+        {
+          "document_title": "Orion Astronomy Notes",
+          "chunk_index": 0,
+          "score": 0.226455,
+          "dense_rank": 2,
+          "lexical_rank": null,
+          "fusion_score": null
+        },
+        {
+          "document_title": "Orion Operations Manual",
+          "chunk_index": 1,
+          "score": 0.162221,
+          "dense_rank": 3,
+          "lexical_rank": null,
+          "fusion_score": null
+        }
+      ],
+      "first_relevant_rank": 1,
+      "document_hit_at_1": true,
+      "document_hit_at_k": true,
+      "document_recall_at_k": 1.0,
+      "evidence_recall_at_k": 1.0,
+      "no_answer_expected": false,
+      "no_answer_observed": false,
+      "success": true
+    },
+    {
+      "id": "harbor-weather",
+      "category": "multi-evidence",
+      "question": "Which measurements are recorded in the Harbor weather observations?",
+      "top_k": 3,
+      "expected_documents": [
+        "Harbor Weather Log"
+      ],
+      "expected_evidence": [
+        "wave height",
+        "barometric pressure"
+      ],
+      "retrieved": [
+        {
+          "document_title": "Cedar Botany Notes",
+          "chunk_index": 0,
+          "score": 0.299342,
+          "dense_rank": 1,
+          "lexical_rank": null,
+          "fusion_score": null
+        },
+        {
+          "document_title": "Orion Astronomy Notes",
+          "chunk_index": 0,
+          "score": 0.26688,
+          "dense_rank": 2,
+          "lexical_rank": null,
+          "fusion_score": null
+        },
+        {
+          "document_title": "Harbor Weather Log",
+          "chunk_index": 0,
+          "score": 0.229416,
+          "dense_rank": 3,
+          "lexical_rank": null,
+          "fusion_score": null
+        }
+      ],
+      "first_relevant_rank": 3,
+      "document_hit_at_1": false,
+      "document_hit_at_k": true,
+      "document_recall_at_k": 1.0,
+      "evidence_recall_at_k": 1.0,
+      "no_answer_expected": false,
+      "no_answer_observed": false,
+      "success": true
+    },
+    {
+      "id": "cedar-remote",
+      "category": "direct",
+      "question": "How many remote days per week does the Cedar team policy allow?",
+      "top_k": 3,
+      "expected_documents": [
+        "Cedar Remote Work Policy"
+      ],
+      "expected_evidence": [
+        "three remote days"
+      ],
+      "retrieved": [
+        {
+          "document_title": "Cedar Remote Work Policy",
+          "chunk_index": 0,
+          "score": 0.600099,
+          "dense_rank": 1,
+          "lexical_rank": null,
+          "fusion_score": null
+        },
+        {
+          "document_title": "Orion Operations Manual",
+          "chunk_index": 1,
+          "score": 0.19868,
+          "dense_rank": 2,
+          "lexical_rank": null,
+          "fusion_score": null
+        },
+        {
+          "document_title": "Orion Operations Manual",
+          "chunk_index": 0,
+          "score": 0.123091,
+          "dense_rank": 3,
+          "lexical_rank": null,
+          "fusion_score": null
+        }
+      ],
+      "first_relevant_rank": 1,
+      "document_hit_at_1": true,
+      "document_hit_at_k": true,
+      "document_recall_at_k": 1.0,
+      "evidence_recall_at_k": 1.0,
+      "no_answer_expected": false,
+      "no_answer_observed": false,
+      "success": true
+    },
+    {
+      "id": "cedar-botany",
+      "category": "paraphrase",
+      "question": "What kind of plants are cedar trees according to the botany notes?",
+      "top_k": 3,
+      "expected_documents": [
+        "Cedar Botany Notes"
+      ],
+      "expected_evidence": [
+        "evergreen conifers"
+      ],
+      "retrieved": [
+        {
+          "document_title": "Orion Operations Manual",
+          "chunk_index": 0,
+          "score": 0.184637,
+          "dense_rank": 1,
+          "lexical_rank": null,
+          "fusion_score": null
+        },
+        {
+          "document_title": "Cedar Botany Notes",
+          "chunk_index": 0,
+          "score": 0.155543,
+          "dense_rank": 2,
+          "lexical_rank": null,
+          "fusion_score": null
+        },
+        {
+          "document_title": "Orion Astronomy Notes",
+          "chunk_index": 0,
+          "score": 0.138675,
+          "dense_rank": 3,
+          "lexical_rank": null,
+          "fusion_score": null
+        }
+      ],
+      "first_relevant_rank": 2,
+      "document_hit_at_1": false,
+      "document_hit_at_k": true,
+      "document_recall_at_k": 1.0,
+      "evidence_recall_at_k": 1.0,
+      "no_answer_expected": false,
+      "no_answer_observed": false,
+      "success": true
+    },
+    {
+      "id": "atlas-multi-evidence",
+      "category": "multi-chunk",
+      "question": "Which safeguards must operators verify during the Atlas reactor shutdown process?",
+      "top_k": 2,
+      "expected_documents": [
+        "Atlas Reactor Procedure"
+      ],
+      "expected_evidence": [
+        "MERIDIAN-LOCK",
+        "QUARTZ-SEAL"
+      ],
+      "retrieved": [
+        {
+          "document_title": "Atlas Reactor Procedure",
+          "chunk_index": 0,
+          "score": 0.251478,
+          "dense_rank": 1,
+          "lexical_rank": null,
+          "fusion_score": null
+        },
+        {
+          "document_title": "Atlas Reactor Procedure",
+          "chunk_index": 1,
+          "score": 0.241209,
+          "dense_rank": 2,
+          "lexical_rank": null,
+          "fusion_score": null
+        }
+      ],
+      "first_relevant_rank": 1,
+      "document_hit_at_1": true,
+      "document_hit_at_k": true,
+      "document_recall_at_k": 1.0,
+      "evidence_recall_at_k": 1.0,
+      "no_answer_expected": false,
+      "no_answer_observed": false,
+      "success": true
+    },
+    {
+      "id": "negative-apollo",
+      "category": "no-answer",
+      "question": "What is the launch date of Apollo 11?",
+      "top_k": 3,
+      "expected_documents": [],
+      "expected_evidence": [],
+      "retrieved": [
+        {
+          "document_title": "Orion Astronomy Notes",
+          "chunk_index": 0,
+          "score": 0.27735,
+          "dense_rank": 1,
+          "lexical_rank": null,
+          "fusion_score": null
+        },
+        {
+          "document_title": "Orion Operations Manual",
+          "chunk_index": 1,
+          "score": 0.132453,
+          "dense_rank": 2,
+          "lexical_rank": null,
+          "fusion_score": null
+        },
+        {
+          "document_title": "Cedar Remote Work Policy",
+          "chunk_index": 0,
+          "score": 0.054554,
+          "dense_rank": 3,
+          "lexical_rank": null,
+          "fusion_score": null
+        }
+      ],
+      "first_relevant_rank": null,
+      "document_hit_at_1": false,
+      "document_hit_at_k": false,
+      "document_recall_at_k": 0.0,
+      "evidence_recall_at_k": 0.0,
+      "no_answer_expected": true,
+      "no_answer_observed": false,
+      "success": false
+    },
+    {
+      "id": "orion-code-exact",
+      "category": "exact-code",
+      "question": "What is the exact code ZEPHYR-17 used for?",
+      "top_k": 3,
+      "expected_documents": [
+        "Orion Operations Manual"
+      ],
+      "expected_evidence": [
+        "ZEPHYR-17"
+      ],
+      "retrieved": [
+        {
+          "document_title": "Orion Operations Manual",
+          "chunk_index": 0,
+          "score": 0.426401,
+          "dense_rank": 1,
+          "lexical_rank": null,
+          "fusion_score": null
+        },
+        {
+          "document_title": "Orion Astronomy Notes",
+          "chunk_index": 0,
+          "score": 0.320256,
+          "dense_rank": 2,
+          "lexical_rank": null,
+          "fusion_score": null
+        },
+        {
+          "document_title": "Cedar Botany Notes",
+          "chunk_index": 0,
+          "score": 0.179605,
+          "dense_rank": 3,
+          "lexical_rank": null,
+          "fusion_score": null
+        }
+      ],
+      "first_relevant_rank": 1,
+      "document_hit_at_1": true,
+      "document_hit_at_k": true,
+      "document_recall_at_k": 1.0,
+      "evidence_recall_at_k": 1.0,
+      "no_answer_expected": false,
+      "no_answer_observed": false,
+      "success": true
+    },
+    {
+      "id": "orion-follow-up",
+      "category": "follow-up",
+      "question": "What must operators verify before handoff in that emergency procedure?",
+      "top_k": 3,
+      "expected_documents": [
+        "Orion Operations Manual"
+      ],
+      "expected_evidence": [
+        "secondary containment checklist"
+      ],
+      "retrieved": [
+        {
+          "document_title": "Orion Operations Manual",
+          "chunk_index": 0,
+          "score": 0.26968,
+          "dense_rank": 1,
+          "lexical_rank": null,
+          "fusion_score": null
+        },
+        {
+          "document_title": "Cedar Botany Notes",
+          "chunk_index": 0,
+          "score": 0.227185,
+          "dense_rank": 2,
+          "lexical_rank": null,
+          "fusion_score": null
+        },
+        {
+          "document_title": "Harbor Finance Guide",
+          "chunk_index": 0,
+          "score": 0.20702,
+          "dense_rank": 3,
+          "lexical_rank": null,
+          "fusion_score": null
+        }
+      ],
+      "first_relevant_rank": 1,
+      "document_hit_at_1": true,
+      "document_hit_at_k": true,
+      "document_recall_at_k": 1.0,
+      "evidence_recall_at_k": 0.0,
+      "no_answer_expected": false,
+      "no_answer_observed": false,
+      "success": false
+    },
+    {
+      "id": "harbor-months",
+      "category": "multi-evidence",
+      "question": "Name the four months in which the Harbor budget is reviewed.",
+      "top_k": 3,
+      "expected_documents": [
+        "Harbor Finance Guide"
+      ],
+      "expected_evidence": [
+        "March",
+        "June",
+        "September",
+        "December"
+      ],
+      "retrieved": [
+        {
+          "document_title": "Harbor Finance Guide",
+          "chunk_index": 0,
+          "score": 0.423659,
+          "dense_rank": 1,
+          "lexical_rank": null,
+          "fusion_score": null
+        },
+        {
+          "document_title": "Orion Astronomy Notes",
+          "chunk_index": 0,
+          "score": 0.355292,
+          "dense_rank": 2,
+          "lexical_rank": null,
+          "fusion_score": null
+        },
+        {
+          "document_title": "Orion Operations Manual",
+          "chunk_index": 1,
+          "score": 0.254514,
+          "dense_rank": 3,
+          "lexical_rank": null,
+          "fusion_score": null
+        }
+      ],
+      "first_relevant_rank": 1,
+      "document_hit_at_1": true,
+      "document_hit_at_k": true,
+      "document_recall_at_k": 1.0,
+      "evidence_recall_at_k": 1.0,
+      "no_answer_expected": false,
+      "no_answer_observed": false,
+      "success": true
+    },
+    {
+      "id": "cedar-change-topic",
+      "category": "topic-switch",
+      "question": "Which genus contains cedar trees?",
+      "top_k": 3,
+      "expected_documents": [
+        "Cedar Botany Notes"
+      ],
+      "expected_evidence": [
+        "Cedrus"
+      ],
+      "retrieved": [
+        {
+          "document_title": "Cedar Botany Notes",
+          "chunk_index": 0,
+          "score": 0.321288,
+          "dense_rank": 1,
+          "lexical_rank": null,
+          "fusion_score": null
+        },
+        {
+          "document_title": "Orion Operations Manual",
+          "chunk_index": 0,
+          "score": 0.0,
+          "dense_rank": 2,
+          "lexical_rank": null,
+          "fusion_score": null
+        },
+        {
+          "document_title": "Orion Operations Manual",
+          "chunk_index": 1,
+          "score": 0.0,
+          "dense_rank": 3,
+          "lexical_rank": null,
+          "fusion_score": null
+        }
+      ],
+      "first_relevant_rank": 1,
+      "document_hit_at_1": true,
+      "document_hit_at_k": true,
+      "document_recall_at_k": 1.0,
+      "evidence_recall_at_k": 1.0,
+      "no_answer_expected": false,
+      "no_answer_observed": false,
+      "success": true
+    },
+    {
+      "id": "atlas-meridian",
+      "category": "exact-code",
+      "question": "Which Atlas safeguard is called MERIDIAN-LOCK?",
+      "top_k": 2,
+      "expected_documents": [
+        "Atlas Reactor Procedure"
+      ],
+      "expected_evidence": [
+        "MERIDIAN-LOCK"
+      ],
+      "retrieved": [
+        {
+          "document_title": "Atlas Reactor Procedure",
+          "chunk_index": 0,
+          "score": 0.315244,
+          "dense_rank": 1,
+          "lexical_rank": null,
+          "fusion_score": null
+        },
+        {
+          "document_title": "Atlas Reactor Procedure",
+          "chunk_index": 1,
+          "score": 0.226779,
+          "dense_rank": 2,
+          "lexical_rank": null,
+          "fusion_score": null
+        }
+      ],
+      "first_relevant_rank": 1,
+      "document_hit_at_1": true,
+      "document_hit_at_k": true,
+      "document_recall_at_k": 1.0,
+      "evidence_recall_at_k": 1.0,
+      "no_answer_expected": false,
+      "no_answer_observed": false,
+      "success": true
+    },
+    {
+      "id": "atlas-quartz",
+      "category": "exact-code",
+      "question": "Which Atlas safeguard covers containment pressure?",
+      "top_k": 2,
+      "expected_documents": [
+        "Atlas Reactor Procedure"
+      ],
+      "expected_evidence": [
+        "QUARTZ-SEAL",
+        "containment pressure"
+      ],
+      "retrieved": [
+        {
+          "document_title": "Atlas Reactor Procedure",
+          "chunk_index": 1,
+          "score": 0.408248,
+          "dense_rank": 1,
+          "lexical_rank": null,
+          "fusion_score": null
+        },
+        {
+          "document_title": "Atlas Training Bulletin",
+          "chunk_index": 0,
+          "score": 0.297044,
+          "dense_rank": 2,
+          "lexical_rank": null,
+          "fusion_score": null
+        }
+      ],
+      "first_relevant_rank": 1,
+      "document_hit_at_1": true,
+      "document_hit_at_k": true,
+      "document_recall_at_k": 1.0,
+      "evidence_recall_at_k": 1.0,
+      "no_answer_expected": false,
+      "no_answer_observed": false,
+      "success": true
+    },
+    {
+      "id": "portuguese-policy",
+      "category": "portuguese",
+      "question": "Quantos dias remotos por semana a política Cedar permite?",
+      "top_k": 3,
+      "expected_documents": [
+        "Cedar Remote Work Policy"
+      ],
+      "expected_evidence": [
+        "three remote days"
+      ],
+      "retrieved": [
+        {
+          "document_title": "Atlas Reactor Procedure",
+          "chunk_index": 0,
+          "score": 0.069505,
+          "dense_rank": 1,
+          "lexical_rank": null,
+          "fusion_score": null
+        },
+        {
+          "document_title": "Cedar Remote Work Policy",
+          "chunk_index": 0,
+          "score": 0.062994,
+          "dense_rank": 2,
+          "lexical_rank": null,
+          "fusion_score": null
+        },
+        {
+          "document_title": "Orion Astronomy Notes",
+          "chunk_index": 0,
+          "score": 0.053376,
+          "dense_rank": 3,
+          "lexical_rank": null,
+          "fusion_score": null
+        }
+      ],
+      "first_relevant_rank": 2,
+      "document_hit_at_1": false,
+      "document_hit_at_k": true,
+      "document_recall_at_k": 1.0,
+      "evidence_recall_at_k": 1.0,
+      "no_answer_expected": false,
+      "no_answer_observed": false,
+      "success": true
+    },
+    {
+      "id": "english-weather",
+      "category": "english",
+      "question": "Which weather measurement describes air visibility?",
+      "top_k": 3,
+      "expected_documents": [
+        "Harbor Weather Log"
+      ],
+      "expected_evidence": [
+        "visibility"
+      ],
+      "retrieved": [
+        {
+          "document_title": "Harbor Weather Log",
+          "chunk_index": 0,
+          "score": 0.187317,
+          "dense_rank": 1,
+          "lexical_rank": null,
+          "fusion_score": null
+        },
+        {
+          "document_title": "Cedar Remote Work Policy",
+          "chunk_index": 0,
+          "score": 0.154303,
+          "dense_rank": 2,
+          "lexical_rank": null,
+          "fusion_score": null
+        },
+        {
+          "document_title": "Atlas Training Bulletin",
+          "chunk_index": 0,
+          "score": 0.099015,
+          "dense_rank": 3,
+          "lexical_rank": null,
+          "fusion_score": null
+        }
+      ],
+      "first_relevant_rank": 1,
+      "document_hit_at_1": true,
+      "document_hit_at_k": true,
+      "document_recall_at_k": 1.0,
+      "evidence_recall_at_k": 1.0,
+      "no_answer_expected": false,
+      "no_answer_observed": false,
+      "success": true
+    },
+    {
+      "id": "unrelated-moon",
+      "category": "no-answer",
+      "question": "Which document explains lunar eclipses?",
+      "top_k": 3,
+      "expected_documents": [],
+      "expected_evidence": [],
+      "retrieved": [
+        {
+          "document_title": "Orion Astronomy Notes",
+          "chunk_index": 0,
+          "score": 0.214834,
+          "dense_rank": 1,
+          "lexical_rank": null,
+          "fusion_score": null
+        },
+        {
+          "document_title": "Orion Operations Manual",
+          "chunk_index": 1,
+          "score": 0.205196,
+          "dense_rank": 2,
+          "lexical_rank": null,
+          "fusion_score": null
+        },
+        {
+          "document_title": "Harbor Finance Guide",
+          "chunk_index": 0,
+          "score": 0.19518,
+          "dense_rank": 3,
+          "lexical_rank": null,
+          "fusion_score": null
+        }
+      ],
+      "first_relevant_rank": null,
+      "document_hit_at_1": false,
+      "document_hit_at_k": false,
+      "document_recall_at_k": 0.0,
+      "evidence_recall_at_k": 0.0,
+      "no_answer_expected": true,
+      "no_answer_observed": false,
+      "success": false
+    },
+    {
+      "id": "orion-multi-document",
+      "category": "multi-document",
+      "question": "What does Orion refer to in both the operations and astronomy notes?",
+      "top_k": 6,
+      "expected_documents": [
+        "Orion Operations Manual",
+        "Orion Astronomy Notes"
+      ],
+      "expected_evidence": [
+        "Project Orion",
+        "constellation"
+      ],
+      "retrieved": [
+        {
+          "document_title": "Orion Astronomy Notes",
+          "chunk_index": 0,
+          "score": 0.42796,
+          "dense_rank": 1,
+          "lexical_rank": null,
+          "fusion_score": null
+        },
+        {
+          "document_title": "Harbor Finance Guide",
+          "chunk_index": 0,
+          "score": 0.349927,
+          "dense_rank": 2,
+          "lexical_rank": null,
+          "fusion_score": null
+        },
+        {
+          "document_title": "Cedar Botany Notes",
+          "chunk_index": 0,
+          "score": 0.288009,
+          "dense_rank": 3,
+          "lexical_rank": null,
+          "fusion_score": null
+        },
+        {
+          "document_title": "Orion Operations Manual",
+          "chunk_index": 0,
+          "score": 0.170941,
+          "dense_rank": 4,
+          "lexical_rank": null,
+          "fusion_score": null
+        },
+        {
+          "document_title": "Atlas Reactor Procedure",
+          "chunk_index": 0,
+          "score": 0.111456,
+          "dense_rank": 5,
+          "lexical_rank": null,
+          "fusion_score": null
+        },
+        {
+          "document_title": "Atlas Reactor Procedure",
+          "chunk_index": 1,
+          "score": 0.106904,
+          "dense_rank": 6,
+          "lexical_rank": null,
+          "fusion_score": null
+        }
+      ],
+      "first_relevant_rank": 1,
+      "document_hit_at_1": true,
+      "document_hit_at_k": true,
+      "document_recall_at_k": 1.0,
+      "evidence_recall_at_k": 1.0,
+      "no_answer_expected": false,
+      "no_answer_observed": false,
+      "success": true
+    },
+    {
+      "id": "harbor-paraphrase",
+      "category": "paraphrase",
+      "question": "How frequently does finance revisit the Harbor program budget?",
+      "top_k": 3,
+      "expected_documents": [
+        "Harbor Finance Guide"
+      ],
+      "expected_evidence": [
+        "quarterly"
+      ],
+      "retrieved": [
+        {
+          "document_title": "Harbor Finance Guide",
+          "chunk_index": 0,
+          "score": 0.363696,
+          "dense_rank": 1,
+          "lexical_rank": null,
+          "fusion_score": null
+        },
+        {
+          "document_title": "Cedar Remote Work Policy",
+          "chunk_index": 0,
+          "score": 0.251976,
+          "dense_rank": 2,
+          "lexical_rank": null,
+          "fusion_score": null
+        },
+        {
+          "document_title": "Orion Operations Manual",
+          "chunk_index": 0,
+          "score": 0.213201,
+          "dense_rank": 3,
+          "lexical_rank": null,
+          "fusion_score": null
+        }
+      ],
+      "first_relevant_rank": 1,
+      "document_hit_at_1": true,
+      "document_hit_at_k": true,
+      "document_recall_at_k": 1.0,
+      "evidence_recall_at_k": 1.0,
+      "no_answer_expected": false,
+      "no_answer_observed": false,
+      "success": true
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "documents": [
+    {
+      "collection": "alpha",
+      "title": "Alpha isolated source",
+      "content": "ALPHA-ISOLATED-71 belongs only to the Alpha workspace.",
+      "embedding": [0.8, 0.2]
+    },
+    {
+      "collection": "beta",
+      "title": "Beta isolated source",
+      "content": "BETA-ISOLATED-92 belongs only to the Beta workspace.",
+      "embedding": [1.0, 0.0]
+    }
+  ],
+  "query": {
+    "text": "BETA-ISOLATED-92",
+    "embedding": [1.0, 0.0]
+  },
+  "expectations": {
+    "alpha": "Alpha isolated source",
+    "beta": "Beta isolated source",
+    "full_base": "Beta isolated source"
+  }
+}

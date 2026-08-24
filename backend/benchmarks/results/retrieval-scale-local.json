@@ -1,0 +1,66 @@
+{
+  "benchmark": "local-rag-retrieval-scale",
+  "embedding_provider": "hash",
+  "metadata": {
+    "python_version": "3.13.1",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",
+    "cpu_count": 28
+  },
+  "sizes": [
+    {
+      "chunks": 1000,
+      "ingest_ms": 107.24,
+      "database_bytes": 1601536,
+      "query_embedding_ms": 0.09,
+      "cold_dense_ms": 258.05,
+      "warm_dense_ms": 230.35,
+      "warm_hybrid_ms": 229.51,
+      "retrieval_peak_traced_bytes": 2592552
+    },
+    {
+      "chunks": 5000,
+      "ingest_ms": 727.12,
+      "database_bytes": 7426048,
+      "query_embedding_ms": 0.08,
+      "cold_dense_ms": 4200.97,
+      "warm_dense_ms": 3312.8,
+      "warm_hybrid_ms": 3129.5,
+      "retrieval_peak_traced_bytes": 13039050
+    },
+    {
+      "chunks": 10000,
+      "ingest_ms": 4672.01,
+      "database_bytes": 14761984,
+      "query_embedding_ms": 0.1,
+      "cold_dense_ms": 8601.21,
+      "warm_dense_ms": 7098.33,
+      "warm_hybrid_ms": 7937.23,
+      "retrieval_peak_traced_bytes": 26113249
+    },
+    {
+      "chunks": 25000,
+      "ingest_ms": 9030.28,
+      "database_bytes": 37339136,
+      "query_embedding_ms": 0.1,
+      "cold_dense_ms": 8541.94,
+      "warm_dense_ms": 6239.76,
+      "warm_hybrid_ms": 8890.61,
+      "retrieval_peak_traced_bytes": 65336810
+    },
+    {
+      "chunks": 50000,
+      "ingest_ms": 27664.45,
+      "database_bytes": 74498048,
+      "query_embedding_ms": 0.14,
+      "cold_dense_ms": 35033.24,
+      "warm_dense_ms": 25256.45,
+      "warm_hybrid_ms": 13951.59,
+      "retrieval_peak_traced_bytes": 130712582
+    }
+  ],
+  "limitations": [
+    "Synthetic corpus and hash embeddings are regression inputs, not production workloads.",
+    "Results are machine-specific and do not establish a universal latency SLO."
+  ]
+}

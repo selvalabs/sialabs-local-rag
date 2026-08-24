@@ -1,0 +1,88 @@
+{
+  "embedding_provider": "ollama",
+  "embedding_model": "embeddinggemma",
+  "retrieval_mode": "hybrid",
+  "corpus_version": 1,
+  "question_version": 2,
+  "selection_rule": "max query_success_rate, then negative_no_answer_accuracy, then evidence_recall; lowest threshold breaks final ties",
+  "recommended_minimum_score": 0.25,
+  "rows": [
+    {
+      "minimum_score": 0.0,
+      "query_success_rate": 0.8947368421052632,
+      "negative_no_answer_accuracy": 0.0,
+      "evidence_recall": 1.0,
+      "document_recall": 1.0
+    },
+    {
+      "minimum_score": 0.05,
+      "query_success_rate": 0.8947368421052632,
+      "negative_no_answer_accuracy": 0.0,
+      "evidence_recall": 1.0,
+      "document_recall": 1.0
+    },
+    {
+      "minimum_score": 0.1,
+      "query_success_rate": 0.8947368421052632,
+      "negative_no_answer_accuracy": 0.0,
+      "evidence_recall": 1.0,
+      "document_recall": 1.0
+    },
+    {
+      "minimum_score": 0.15,
+      "query_success_rate": 0.8947368421052632,
+      "negative_no_answer_accuracy": 0.0,
+      "evidence_recall": 1.0,
+      "document_recall": 1.0
+    },
+    {
+      "minimum_score": 0.2,
+      "query_success_rate": 0.9473684210526315,
+      "negative_no_answer_accuracy": 0.5,
+      "evidence_recall": 1.0,
+      "document_recall": 1.0
+    },
+    {
+      "minimum_score": 0.25,
+      "query_success_rate": 1.0,
+      "negative_no_answer_accuracy": 1.0,
+      "evidence_recall": 1.0,
+      "document_recall": 1.0
+    },
+    {
+      "minimum_score": 0.3,
+      "query_success_rate": 1.0,
+      "negative_no_answer_accuracy": 1.0,
+      "evidence_recall": 1.0,
+      "document_recall": 1.0
+    },
+    {
+      "minimum_score": 0.35,
+      "query_success_rate": 1.0,
+      "negative_no_answer_accuracy": 1.0,
+      "evidence_recall": 1.0,
+      "document_recall": 1.0
+    },
+    {
+      "minimum_score": 0.4,
+      "query_success_rate": 1.0,
+      "negative_no_answer_accuracy": 1.0,
+      "evidence_recall": 1.0,
+      "document_recall": 1.0
+    },
+    {
+      "minimum_score": 0.45,
+      "query_success_rate": 1.0,
+      "negative_no_answer_accuracy": 1.0,
+      "evidence_recall": 1.0,
+      "document_recall": 1.0
+    },
+    {
+      "minimum_score": 0.5,
+      "query_success_rate": 1.0,
+      "negative_no_answer_accuracy": 1.0,
+      "evidence_recall": 1.0,
+      "document_recall": 1.0
+    }
+  ]
+}

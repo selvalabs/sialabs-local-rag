@@ -1,0 +1,157 @@
+{
+  "version": 2,
+  "questions": [
+    {
+      "id": "orion-protocol",
+      "category": "direct",
+      "question": "Which protocol code is required for Project Orion emergency response?",
+      "expected_documents": ["Orion Operations Manual"],
+      "expected_evidence": ["ZEPHYR-17"],
+      "top_k": 3
+    },
+    {
+      "id": "orion-astronomy",
+      "category": "paraphrase",
+      "question": "Which bright stars are named in the Orion constellation notes?",
+      "expected_documents": ["Orion Astronomy Notes"],
+      "expected_evidence": ["Betelgeuse", "Rigel"],
+      "top_k": 3
+    },
+    {
+      "id": "harbor-budget",
+      "category": "direct",
+      "question": "How often is the Harbor program budget reviewed?",
+      "expected_documents": ["Harbor Finance Guide"],
+      "expected_evidence": ["quarterly"],
+      "top_k": 3
+    },
+    {
+      "id": "harbor-weather",
+      "category": "multi-evidence",
+      "question": "Which measurements are recorded in the Harbor weather observations?",
+      "expected_documents": ["Harbor Weather Log"],
+      "expected_evidence": ["wave height", "barometric pressure"],
+      "top_k": 3
+    },
+    {
+      "id": "cedar-remote",
+      "category": "direct",
+      "question": "How many remote days per week does the Cedar team policy allow?",
+      "expected_documents": ["Cedar Remote Work Policy"],
+      "expected_evidence": ["three remote days"],
+      "top_k": 3
+    },
+    {
+      "id": "cedar-botany",
+      "category": "paraphrase",
+      "question": "What kind of plants are cedar trees according to the botany notes?",
+      "expected_documents": ["Cedar Botany Notes"],
+      "expected_evidence": ["evergreen conifers"],
+      "top_k": 3
+    },
+    {
+      "id": "atlas-multi-evidence",
+      "category": "multi-chunk",
+      "question": "Which safeguards must operators verify during the Atlas reactor shutdown process?",
+      "expected_documents": ["Atlas Reactor Procedure"],
+      "expected_evidence": ["MERIDIAN-LOCK", "QUARTZ-SEAL"],
+      "top_k": 2
+    },
+    {
+      "id": "negative-apollo",
+      "category": "no-answer",
+      "question": "What is the launch date of Apollo 11?",
+      "expected_documents": [],
+      "expected_evidence": [],
+      "top_k": 3
+    },
+    {
+      "id": "orion-code-exact",
+      "category": "exact-code",
+      "question": "What is the exact code ZEPHYR-17 used for?",
+      "expected_documents": ["Orion Operations Manual"],
+      "expected_evidence": ["ZEPHYR-17"],
+      "top_k": 3
+    },
+    {
+      "id": "orion-follow-up",
+      "category": "follow-up",
+      "question": "What must operators verify before handoff in that emergency procedure?",
+      "expected_documents": ["Orion Operations Manual"],
+      "expected_evidence": ["secondary containment checklist"],
+      "top_k": 3
+    },
+    {
+      "id": "harbor-months",
+      "category": "multi-evidence",
+      "question": "Name the four months in which the Harbor budget is reviewed.",
+      "expected_documents": ["Harbor Finance Guide"],
+      "expected_evidence": ["March", "June", "September", "December"],
+      "top_k": 3
+    },
+    {
+      "id": "cedar-change-topic",
+      "category": "topic-switch",
+      "question": "Which genus contains cedar trees?",
+      "expected_documents": ["Cedar Botany Notes"],
+      "expected_evidence": ["Cedrus"],
+      "top_k": 3
+    },
+    {
+      "id": "atlas-meridian",
+      "category": "exact-code",
+      "question": "Which Atlas safeguard is called MERIDIAN-LOCK?",
+      "expected_documents": ["Atlas Reactor Procedure"],
+      "expected_evidence": ["MERIDIAN-LOCK"],
+      "top_k": 2
+    },
+    {
+      "id": "atlas-quartz",
+      "category": "exact-code",
+      "question": "Which Atlas safeguard covers containment pressure?",
+      "expected_documents": ["Atlas Reactor Procedure"],
+      "expected_evidence": ["QUARTZ-SEAL", "containment pressure"],
+      "top_k": 2
+    },
+    {
+      "id": "portuguese-policy",
+      "category": "portuguese",
+      "question": "Quantos dias remotos por semana a política Cedar permite?",
+      "expected_documents": ["Cedar Remote Work Policy"],
+      "expected_evidence": ["three remote days"],
+      "top_k": 3
+    },
+    {
+      "id": "english-weather",
+      "category": "english",
+      "question": "Which weather measurement describes air visibility?",
+      "expected_documents": ["Harbor Weather Log"],
+      "expected_evidence": ["visibility"],
+      "top_k": 3
+    },
+    {
+      "id": "unrelated-moon",
+      "category": "no-answer",
+      "question": "Which document explains lunar eclipses?",
+      "expected_documents": [],
+      "expected_evidence": [],
+      "top_k": 3
+    },
+    {
+      "id": "orion-multi-document",
+      "category": "multi-document",
+      "question": "What does Orion refer to in both the operations and astronomy notes?",
+      "expected_documents": ["Orion Operations Manual", "Orion Astronomy Notes"],
+      "expected_evidence": ["Project Orion", "constellation"],
+      "top_k": 6
+    },
+    {
+      "id": "harbor-paraphrase",
+      "category": "paraphrase",
+      "question": "How frequently does finance revisit the Harbor program budget?",
+      "expected_documents": ["Harbor Finance Guide"],
+      "expected_evidence": ["quarterly"],
+      "top_k": 3
+    }
+  ]
+}

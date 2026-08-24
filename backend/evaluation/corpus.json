@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "documents": [
+    {
+      "key": "orion-operations",
+      "title": "Orion Operations Manual",
+      "chunks": [
+        "Project Orion emergency response uses the amber protocol. Operators must enter code ZEPHYR-17 before isolating the primary control bus.",
+        "During Project Orion emergency response, the secondary containment checklist requires verification of the amber protocol before handoff."
+      ]
+    },
+    {
+      "key": "orion-astronomy",
+      "title": "Orion Astronomy Notes",
+      "chunks": [
+        "Orion is a prominent constellation near the celestial equator. Betelgeuse and Rigel are among its brightest stars, and the Orion Nebula lies in the sword."
+      ]
+    },
+    {
+      "key": "harbor-finance",
+      "title": "Harbor Finance Guide",
+      "chunks": [
+        "The Harbor program budget is reviewed quarterly in March, June, September, and December. Finance leads publish variance notes after each review."
+      ]
+    },
+    {
+      "key": "harbor-weather",
+      "title": "Harbor Weather Log",
+      "chunks": [
+        "Harbor weather observations record wind direction, wave height, visibility, and barometric pressure. Winter storms often bring strong northwest winds."
+      ]
+    },
+    {
+      "key": "cedar-policy",
+      "title": "Cedar Remote Work Policy",
+      "chunks": [
+        "The Cedar team remote-work policy allows three remote days per week. Employees coordinate office days with their manager and team calendar."
+      ]
+    },
+    {
+      "key": "cedar-botany",
+      "title": "Cedar Botany Notes",
+      "chunks": [
+        "Cedar trees are evergreen conifers in the genus Cedrus. Their needle-like leaves grow in clusters and their woody cones mature over time."
+      ]
+    },
+    {
+      "key": "atlas-procedure",
+      "title": "Atlas Reactor Procedure",
+      "chunks": [
+        "Atlas reactor shutdown safeguard MERIDIAN-LOCK requires operators to verify coolant isolation, shutdown sequence, and safeguard status before restart.",
+        "Atlas reactor shutdown safeguard QUARTZ-SEAL requires operators to verify containment pressure, shutdown sequence, and safeguard status before restart."
+      ]
+    },
+    {
+      "key": "atlas-training",
+      "title": "Atlas Training Bulletin",
+      "chunks": [
+        "Atlas reactor training covers shutdown terminology, operator communication, simulator drills, and general safeguard awareness for new staff."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "markdown-recovery-section",
+      "filename": "maintenance.md",
+      "title": "Maintenance Manual",
+      "content": "# Inspection\n\nRoutine inspection uses code INSPECT-11 and verifies the primary sensor.\n\n# Recovery\n\nEmergency recovery uses exact code RECOVER-77 before the controller restarts.",
+      "question": "Which section contains RECOVER-77?",
+      "expected_section": "Recovery",
+      "expected_locator": "section:Recovery",
+      "expected_evidence": "RECOVER-77"
+    }
+  ]
+}

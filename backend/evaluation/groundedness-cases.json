@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "grounded-citation",
+      "answer": "The recovery window is 48 hours [S1].",
+      "sources": [
+        {"source_id": "S1", "content": "The recovery window is 48 hours."}
+      ]
+    },
+    {
+      "id": "unsupported-claim",
+      "answer": "The recovery window is 48 hours [S1]. The budget is unlimited.",
+      "sources": [
+        {"source_id": "S1", "content": "The recovery window is 48 hours."}
+      ]
+    },
+    {
+      "id": "safe-refusal",
+      "answer": "I could not find that information in the indexed sources.",
+      "sources": [
+        {"source_id": "S1", "content": "A recovery procedure."}
+      ]
+    }
+  ]
+}

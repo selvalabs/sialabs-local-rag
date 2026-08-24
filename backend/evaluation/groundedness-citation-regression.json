@@ -1,0 +1,45 @@
+{
+  "fixture_version": 1,
+  "metric_definition": "lexical source overlap plus explicit [S#] coverage; not an LLM judge",
+  "cases": [
+    {
+      "id": "grounded-citation",
+      "claim_count": 1,
+      "grounded_claim_count": 1,
+      "cited_claim_count": 1,
+      "grounded_claim_ratio": 1.0,
+      "citation_coverage": 1.0,
+      "cited_source_ids": [
+        "S1"
+      ],
+      "unsupported_claims": []
+    },
+    {
+      "id": "unsupported-claim",
+      "claim_count": 2,
+      "grounded_claim_count": 1,
+      "cited_claim_count": 1,
+      "grounded_claim_ratio": 0.5,
+      "citation_coverage": 0.5,
+      "cited_source_ids": [
+        "S1"
+      ],
+      "unsupported_claims": [
+        "The budget is unlimited."
+      ]
+    },
+    {
+      "id": "safe-refusal",
+      "claim_count": 0,
+      "grounded_claim_count": 0,
+      "cited_claim_count": 0,
+      "grounded_claim_ratio": 1.0,
+      "citation_coverage": 1.0,
+      "cited_source_ids": [],
+      "unsupported_claims": []
+    }
+  ],
+  "unsupported_case_count": 1,
+  "mean_grounded_claim_ratio": 0.8333333333333334,
+  "mean_citation_coverage": 0.8333333333333334
+}
