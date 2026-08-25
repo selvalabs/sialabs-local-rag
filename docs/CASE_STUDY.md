@@ -7,6 +7,14 @@ cloud account, while remaining honest about local storage, model quality and
 scale limits. The public showcase therefore treats reproducibility and
 evidence as product features, not only maintenance concerns.
 
+## Public release provenance
+
+Development history, intermediate branches and experiments are maintained in a
+private engineering repository. This public repository is the curated,
+sanitized showcase release: the source, documentation, reproducible validation
+and CI configuration needed to review the released system are present here,
+without publishing private development artifacts.
+
 ## Architecture and choices
 
 The frontend is a React/Vite application backed by FastAPI, SQLite and an
