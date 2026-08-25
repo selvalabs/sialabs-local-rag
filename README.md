@@ -8,6 +8,10 @@ SIALabs Local RAG is a local knowledge workspace for small and medium document s
 
 This is a single-user, local reference implementation. It is not a hosted service, multi-tenant SaaS, or signed native installer.
 
+## Public showcase release
+
+This repository is a curated, sanitized public release of a project developed in a private engineering repository. It contains the reviewable release source, reproducible validation, documentation and CI configuration. Intermediate development branches, issues and experiments remain private; the public history starts from the validated showcase release.
+
 ## Why this is more than a PDF chat
 
 - **Hybrid retrieval:** dense embeddings plus SQLite FTS5 lexical search fused with weighted reciprocal rank fusion (RRF).
