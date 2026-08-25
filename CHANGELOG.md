@@ -22,4 +22,4 @@ All notable changes to the public release line are recorded here.
 - Structured ingestion metadata for PDF and Office sources.
 - Hybrid retrieval, collections and local runtime profiles.
 
-Historical details before the public release line are preserved in Git history.
+Development history before this public showcase line remains in the private engineering repository. This public repository begins from the curated v0.3.1 showcase release.
