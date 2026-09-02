@@ -35,7 +35,7 @@ type ChatMessage = {
   content: string
   response?: ChatResponse
 }
-export type UploadStatus = 'idle' | 'selected' | 'uploading' | 'ready' | 'error'
+type UploadStatus = 'idle' | 'selected' | 'uploading' | 'ready' | 'error'
 
 const CHAT_HISTORY_STORAGE_KEY = 'sialabs-local-rag-chat-history-v1'
 
@@ -314,11 +314,11 @@ function parseOptionalNumber(value: string) {
   return Number.isFinite(parsed) ? parsed : null
 }
 
-export function hasMeaningfulCollectionChoice(collections: CollectionSummary[]) {
+function hasMeaningfulCollectionChoice(collections: CollectionSummary[]) {
   return collections.length > 1
 }
 
-export function uploadStatusKey(status: UploadStatus) {
+function uploadStatusKey(status: UploadStatus) {
   return status === 'idle' ? null : status
 }
 

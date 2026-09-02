@@ -176,7 +176,8 @@ button.ghost {
 }
 
 input,
-textarea {
+textarea,
+select {
   border: 1px solid var(--field-border);
   border-radius: 14px;
   color: var(--ink);
