@@ -35,6 +35,7 @@ type ChatMessage = {
   content: string
   response?: ChatResponse
 }
+export type UploadStatus = 'idle' | 'selected' | 'uploading' | 'ready' | 'error'
 
 const CHAT_HISTORY_STORAGE_KEY = 'sialabs-local-rag-chat-history-v1'
 
@@ -120,6 +121,10 @@ const copy = {
     dropFile: 'Drop file to add it',
     pdfBoundary: 'Scanned PDFs/OCR are out of scope. Content stays in the local base.',
     addFileToBase: 'Add file',
+    uploadSelected: 'Selected — ready to add',
+    uploadIndexing: 'Uploading and indexing…',
+    uploadReady: 'File indexed and ready',
+    uploadFailed: 'File could not be indexed',
     localBase: 'Local base',
     indexedDocs: 'Indexed documents',
     documents: 'Documents',
@@ -225,6 +230,10 @@ const copy = {
     dropFile: 'Solte o arquivo para adicionar',
     pdfBoundary: 'PDFs escaneados/OCR ficam fora do escopo. O conteúdo permanece na base local.',
     addFileToBase: 'Adicionar arquivo',
+    uploadSelected: 'Selecionado — pronto para adicionar',
+    uploadIndexing: 'Enviando e indexando…',
+    uploadReady: 'Arquivo indexado e pronto',
+    uploadFailed: 'Não foi possível indexar o arquivo',
     localBase: 'Base local',
     indexedDocs: 'Documentos indexados',
     documents: 'Documentos',
@@ -305,6 +314,14 @@ function parseOptionalNumber(value: string) {
   return Number.isFinite(parsed) ? parsed : null
 }
 
+export function hasMeaningfulCollectionChoice(collections: CollectionSummary[]) {
+  return collections.length > 1
+}
+
+export function uploadStatusKey(status: UploadStatus) {
+  return status === 'idle' ? null : status
+}
+
 function isChatMessage(value: unknown): value is ChatMessage {
   if (!value || typeof value !== 'object') return false
   const candidate = value as Partial<ChatMessage>
@@ -365,6 +382,7 @@ function App() {
   const [question, setQuestion] = useState(copy.en.defaultQuestion as string)
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(readPersistedChatMessages)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [uploadStatus, setUploadStatus] = useState<UploadStatus>('idle')
   const [isPasteModalOpen, setIsPasteModalOpen] = useState(false)
   const [isDraggingFile, setIsDraggingFile] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -421,7 +439,10 @@ function App() {
       dragDepth = 0
       setIsDraggingFile(false)
       const droppedFile = event.dataTransfer?.files?.[0]
-      if (droppedFile) setSelectedFile(droppedFile)
+      if (droppedFile) {
+        setSelectedFile(droppedFile)
+        setUploadStatus('selected')
+      }
     }
 
     window.addEventListener('dragenter', handleDragEnter)
@@ -543,17 +564,19 @@ function App() {
   async function handleUploadDocument(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!selectedFile) return
-    setIsLoading(true)
+    setUploadStatus('uploading')
     setError(null)
     try {
       await uploadDocument(selectedFile)
       setSelectedFile(null)
+      setUploadStatus('ready')
       await refreshDocuments()
       await refreshIndexStatus()
     } catch (caught) {
+      setUploadStatus('error')
       setError(caught instanceof Error ? caught.message : (t.uploadError as string))
     } finally {
-      setIsLoading(false)
+      setUploadStatus((currentStatus) => (currentStatus === 'uploading' ? 'error' : currentStatus))
     }
   }
 
@@ -756,18 +779,29 @@ function App() {
             <h2>{t.addFile as string}</h2>
             <p className="muted">{t.addFileHelp as string}</p>
             {selectedFile && <p className="selected-file-meta">{selectedFile.name}</p>}
+            <p className={`upload-status ${uploadStatus}`} role="status">
+              {uploadStatusKey(uploadStatus) === 'selected' && (t.uploadSelected as string)}
+              {uploadStatusKey(uploadStatus) === 'uploading' && (t.uploadIndexing as string)}
+              {uploadStatusKey(uploadStatus) === 'ready' && (t.uploadReady as string)}
+              {uploadStatusKey(uploadStatus) === 'error' && (t.uploadFailed as string)}
+            </p>
           </div>
           {selectedFile ? (
-            <button className="action-button" disabled={isLoading} type="submit">
-              {t.addFileToBase as string}
+            <button className="action-button" disabled={uploadStatus === 'uploading'} type="submit">
+              {uploadStatus === 'uploading' ? (t.uploadIndexing as string) : (t.addFileToBase as string)}
             </button>
           ) : (
-            <label className="action-button file-action-button">
+            <label className="action-button file-action-button" aria-disabled={uploadStatus === 'uploading'}>
               {t.chooseLocalFile as string}
               <input
                 type="file"
                 accept=".txt,.md,.markdown,.pdf,.docx,.pptx,.xlsx,.png,.jpg,.jpeg,.tif,.tiff"
-                onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
+                disabled={uploadStatus === 'uploading'}
+                onChange={(event) => {
+                  const file = event.target.files?.[0] ?? null
+                  setSelectedFile(file)
+                  setUploadStatus(file ? 'selected' : 'idle')
+                }}
               />
             </label>
           )}
@@ -840,29 +874,34 @@ function App() {
                 {hasDocuments ? (t.chatReady as string) : (t.chatBlocked as string)}
               </p>
             </div>
-            {hasChatMessages && (
-              <button className="ghost" onClick={() => void handleClearChat()} type="button">
-                {t.clearChat as string}
-              </button>
-            )}
+            <div className="chat-heading-actions">
+              {hasMeaningfulCollectionChoice(collections) && (
+                <label className="collection-selector compact">
+                  <span>{t.collections as string}</span>
+                  <select
+                    aria-label={t.collections as string}
+                    value={activeCollectionId ?? ''}
+                    onChange={(event) => {
+                      setActiveCollectionId(event.target.value || null)
+                      setChatMessages([])
+                    }}
+                  >
+                    <option value="">{t.allCollections as string}</option>
+                    {collections.map((collection) => (
+                      <option key={collection.id} value={collection.id}>
+                        {collection.name} · {(t.activeSources as (count: number) => string)(collection.active_sources)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              {hasChatMessages && (
+                <button className="ghost" onClick={() => void handleClearChat()} type="button">
+                  {t.clearChat as string}
+                </button>
+              )}
+            </div>
           </div>
-          <label className="collection-selector">
-            <span>{t.collections as string}</span>
-            <select
-              value={activeCollectionId ?? ''}
-              onChange={(event) => {
-                setActiveCollectionId(event.target.value || null)
-                setChatMessages([])
-              }}
-            >
-              <option value="">{t.allCollections as string}</option>
-              {collections.map((collection) => (
-                <option key={collection.id} value={collection.id}>
-                  {collection.name} · {(t.activeSources as (count: number) => string)(collection.active_sources)}
-                </option>
-              ))}
-            </select>
-          </label>
 
           <div className="conversation-log" aria-live="polite">
             {!hasChatMessages && !isLoading && (

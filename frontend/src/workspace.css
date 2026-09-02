@@ -198,6 +198,51 @@
   grid-template-columns: minmax(0, 1fr) auto;
 }
 
+.chat-heading-actions {
+  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  justify-content: flex-end;
+}
+
+.collection-selector {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 15rem;
+}
+
+.collection-selector span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.collection-selector.compact {
+  min-width: min(17rem, 100%);
+}
+
+.upload-status {
+  font-size: 0.82rem;
+  font-weight: 800;
+  margin: 0.45rem 0 0;
+}
+
+.upload-status.selected,
+.upload-status.uploading {
+  color: var(--accent);
+}
+
+.upload-status.ready {
+  color: #277a47;
+}
+
+.upload-status.error {
+  color: var(--danger-ink);
+}
+
 .chat-form textarea {
   min-height: 5.5rem;
 }
