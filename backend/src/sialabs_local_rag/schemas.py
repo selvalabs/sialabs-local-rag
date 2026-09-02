@@ -18,6 +18,7 @@ class RuntimeOptions(BaseModel):
     num_gpu: int | None = Field(default=None, ge=0, le=256)
     keep_alive: str | None = Field(default=None, max_length=24)
     temperature: float | None = Field(default=None, ge=0, le=2)
+    think: bool | None = None
 
 
 class RuntimeConfigResponse(BaseModel):

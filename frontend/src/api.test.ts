@@ -47,13 +47,16 @@ describe('API client', () => {
     )
     vi.stubGlobal('fetch', fetchMock)
 
-    await askQuestion('question', [{ role: 'user', content: 'previous' }], { profile: 'balanced' })
+    await askQuestion('question', [{ role: 'user', content: 'previous' }], {
+      profile: 'balanced',
+      think: false,
+    })
 
     const request = fetchMock.mock.calls[0][1] as RequestInit
     expect(JSON.parse(String(request.body))).toMatchObject({
       question: 'question',
       conversation_context: [{ role: 'user', content: 'previous' }],
-      runtime_options: { profile: 'balanced' },
+      runtime_options: { profile: 'balanced', think: false },
     })
   })
 })

@@ -259,4 +259,5 @@ def to_provider_runtime_options(
         num_gpu=runtime_options.num_gpu,
         keep_alive=runtime_options.keep_alive,
         temperature=runtime_options.temperature,
+        think=runtime_options.think,
     )

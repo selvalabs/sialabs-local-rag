@@ -52,10 +52,11 @@ const fallbackRuntimeProfiles: Record<RuntimeProfileName, RuntimeOptions> = {
   economy: {
     profile: 'economy',
     model: 'gemma4:e2b',
-    num_ctx: 1024,
+    num_ctx: 2048,
     num_gpu: 0,
     keep_alive: '1m',
     temperature: 0.2,
+    think: false,
   },
   balanced: {
     profile: 'balanced',
@@ -64,6 +65,7 @@ const fallbackRuntimeProfiles: Record<RuntimeProfileName, RuntimeOptions> = {
     num_gpu: null,
     keep_alive: '5m',
     temperature: 0.2,
+    think: false,
   },
   strong: {
     profile: 'strong',
@@ -72,6 +74,7 @@ const fallbackRuntimeProfiles: Record<RuntimeProfileName, RuntimeOptions> = {
     num_gpu: null,
     keep_alive: '5m',
     temperature: 0.2,
+    think: true,
   },
   custom: {
     profile: 'custom',
@@ -80,6 +83,7 @@ const fallbackRuntimeProfiles: Record<RuntimeProfileName, RuntimeOptions> = {
     num_gpu: null,
     keep_alive: '5m',
     temperature: 0.2,
+    think: false,
   },
 }
 
@@ -170,6 +174,9 @@ const copy = {
     keepAlive: 'Keep alive',
     keepAliveAuto: 'keep_alive auto',
     temperature: 'Temperature',
+    thinkingSetting: 'Thinking',
+    thinkingOn: 'Thinking on',
+    thinkingOff: 'Thinking off',
     testRuntime: 'Test local AI',
     testingRuntime: 'Testing…',
     runtimeSuccess: 'Runtime test passed',
@@ -279,6 +286,9 @@ const copy = {
     keepAlive: 'Manter carregado',
     keepAliveAuto: 'keep_alive automático',
     temperature: 'Temperatura',
+    thinkingSetting: 'Raciocínio',
+    thinkingOn: 'Raciocínio ativado',
+    thinkingOff: 'Raciocínio desativado',
     testRuntime: 'Testar IA local',
     testingRuntime: 'Testando…',
     runtimeSuccess: 'Teste da IA aprovado',
@@ -1058,13 +1068,22 @@ function App() {
                   }
                 />
               </label>
+              <label>
+                {t.thinkingSetting as string}
+                <input
+                  checked={runtimeOptions.think ?? false}
+                  type="checkbox"
+                  onChange={(event) => updateRuntimeOption('think', event.target.checked)}
+                />
+              </label>
             </div>
 
             <div className="runtime-summary">
               <span>{runtimeOptions.model || runtimeConfig.llm_model}</span>
               <span>ctx {runtimeOptions.num_ctx ?? (t.gpuAuto as string)}</span>
               <span>gpu {runtimeOptions.num_gpu ?? (t.gpuAuto as string)}</span>
-                      <span>{runtimeOptions.keep_alive || t.keepAliveAuto}</span>
+              <span>{runtimeOptions.think ? (t.thinkingOn as string) : (t.thinkingOff as string)}</span>
+              <span>{runtimeOptions.keep_alive || t.keepAliveAuto}</span>
             </div>
 
             {runtimeTestResult && (

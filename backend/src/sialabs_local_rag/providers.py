@@ -64,6 +64,7 @@ class ChatRuntimeOptions:
     num_gpu: int | None = None
     keep_alive: str | None = None
     temperature: float | None = None
+    think: bool | None = None
 
 
 class EmbeddingProvider(Protocol):
@@ -238,6 +239,8 @@ class OllamaChatProvider:
         }
         if keep_alive:
             payload["keep_alive"] = keep_alive
+        if runtime_options and runtime_options.think is not None:
+            payload["think"] = runtime_options.think
 
         try:
             async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
@@ -255,6 +258,12 @@ class OllamaChatProvider:
 
         content = message.get("content")
         if not isinstance(content, str) or not content.strip():
+            thinking = message.get("thinking")
+            if isinstance(thinking, str) and thinking.strip():
+                raise ProviderError(
+                    "The local model produced reasoning but no final answer. "
+                    "Disable thinking or increase the context window."
+                )
             raise ProviderError("Ollama chat response returned empty content.")
 
         return content.strip()

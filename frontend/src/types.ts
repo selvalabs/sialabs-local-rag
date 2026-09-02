@@ -7,6 +7,7 @@ export type RuntimeOptions = {
   num_gpu?: number | null
   keep_alive?: string | null
   temperature?: number | null
+  think?: boolean | null
 }
 
 export type RuntimeConfig = {

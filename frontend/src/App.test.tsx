@@ -55,8 +55,12 @@ function renderApp(collections: CollectionSummary[] = [defaultCollection]) {
     llm_model: 'local-mock',
     embedding_provider: 'hash',
     embedding_model: 'hash-bow-128',
-    default_options: { profile: 'balanced' },
-    profiles: {},
+    default_options: { profile: 'balanced', think: false },
+    profiles: {
+      economy: { profile: 'economy', num_ctx: 2048, num_gpu: 0, think: false },
+      balanced: { profile: 'balanced', num_ctx: 1024, num_gpu: null, think: false },
+      strong: { profile: 'strong', num_ctx: 4096, num_gpu: null, think: true },
+    },
   })
   api.getCollections.mockResolvedValue(collections)
   api.getIndexStatus.mockResolvedValue({
@@ -125,5 +129,41 @@ describe('local workspace UX states', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add file' }))
 
     await waitFor(() => expect(screen.getByText('File could not be indexed')).toBeTruthy())
+  })
+
+  it.each([
+    ['Economy', false],
+    ['Balanced', false],
+    ['Strong', true],
+  ])('applies thinking %s profile defaults', async (profile, expectedThinking) => {
+    renderApp()
+
+    await screen.findByRole('button', { name: profile })
+    fireEvent.click(screen.getByRole('button', { name: profile }))
+
+    expect((screen.getByLabelText('Thinking') as HTMLInputElement).checked).toBe(expectedThinking)
+  })
+
+  it('uses a custom profile and sends the selected thinking value to the runtime API', async () => {
+    api.testRuntime.mockResolvedValue({
+      success: true,
+      provider: 'mock',
+      model: 'local-mock',
+      latency_ms: 1,
+      answer: 'ok',
+      error: null,
+    })
+    renderApp()
+
+    const thinkingInput = await screen.findByLabelText('Thinking')
+    fireEvent.click(thinkingInput)
+    expect(screen.getByRole('button', { name: 'Custom' }).classList.contains('active')).toBe(true)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Test local AI' }))
+    await waitFor(() =>
+      expect(api.testRuntime).toHaveBeenCalledWith(
+        expect.objectContaining({ profile: 'custom', think: true }),
+      ),
+    )
   })
 })
