@@ -476,6 +476,8 @@ export interface components {
             keep_alive?: string | null;
             /** Temperature */
             temperature?: number | null;
+            /** Think */
+            think?: boolean | null;
         };
         /** RuntimeTestRequest */
         RuntimeTestRequest: {

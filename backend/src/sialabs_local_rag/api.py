@@ -84,10 +84,11 @@ def get_runtime_profiles(settings: Settings) -> dict[str, RuntimeOptions]:
         "economy": RuntimeOptions(
             profile="economy",
             model=settings.ollama_chat_model,
-            num_ctx=1024,
+            num_ctx=2048,
             num_gpu=0,
             keep_alive="1m",
             temperature=settings.ollama_temperature,
+            think=False,
         ),
         "balanced": RuntimeOptions(
             profile="balanced",
@@ -96,6 +97,7 @@ def get_runtime_profiles(settings: Settings) -> dict[str, RuntimeOptions]:
             num_gpu=settings.ollama_num_gpu,
             keep_alive=settings.ollama_keep_alive,
             temperature=settings.ollama_temperature,
+            think=False,
         ),
         "strong": RuntimeOptions(
             profile="strong",
@@ -104,6 +106,7 @@ def get_runtime_profiles(settings: Settings) -> dict[str, RuntimeOptions]:
             num_gpu=settings.ollama_num_gpu,
             keep_alive=settings.ollama_keep_alive,
             temperature=settings.ollama_temperature,
+            think=True,
         ),
     }
 
@@ -161,6 +164,7 @@ def get_runtime_config(
             num_gpu=settings.ollama_num_gpu,
             keep_alive=settings.ollama_keep_alive,
             temperature=settings.ollama_temperature,
+            think=False,
         ),
         profiles=get_runtime_profiles(settings),
     )
