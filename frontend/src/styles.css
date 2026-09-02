@@ -102,8 +102,19 @@ body::before {
 
 button,
 input,
-textarea {
+textarea,
+select {
   font: inherit;
+}
+
+select {
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: calc(100% - 1rem) 50%, calc(100% - 0.65rem) 50%;
+  background-repeat: no-repeat;
+  background-size: 0.35rem 0.35rem, 0.35rem 0.35rem;
+  padding-right: 2rem;
 }
 
 button {
@@ -165,7 +176,8 @@ button.ghost {
 }
 
 input,
-textarea {
+textarea,
+select {
   border: 1px solid var(--field-border);
   border-radius: 14px;
   color: var(--ink);
@@ -176,6 +188,7 @@ textarea {
 
 input:focus,
 textarea:focus,
+select:focus,
 button:focus-visible,
 .upload-dropzone:focus-within {
   outline: 3px solid var(--focus);
