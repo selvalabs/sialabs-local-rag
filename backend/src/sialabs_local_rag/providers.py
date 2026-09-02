@@ -11,11 +11,50 @@ import httpx
 from sialabs_local_rag.settings import Settings
 from sialabs_local_rag.vector_math import normalize_vector
 
+_OLLAMA_DETAIL_LIMIT = 500
+_OLLAMA_OOM_RE = re.compile(
+    r"(?:cuda|gpu|llama-server)[^\n]{0,120}(?:out of memory|oom)|"
+    r"(?:out of memory|oom)[^\n]{0,120}(?:cuda|gpu|llama-server)",
+    re.IGNORECASE,
+)
+_SECRET_RE = re.compile(
+    r"(?i)(bearer\s+|(?:api[_-]?key|token|password|secret)\s*[:=]\s*)[^\s,;]+"
+)
+_URL_CREDENTIAL_RE = re.compile(r"(?i)(https?://)([^/@\s]+):([^/@\s]+)@")
+_OLLAMA_OOM_MESSAGE = (
+    "The local model could not start because GPU memory was exhausted. "
+    "Try the Economy profile (GPU 0 / CPU mode) or reduce GPU usage."
+)
+
 _TOKEN_RE = re.compile(r"[\wÀ-ÿ]+", re.UNICODE)
 
 
 class ProviderError(RuntimeError):
     """Raised when an external AI provider cannot complete a request."""
+
+
+def format_ollama_http_error(response: httpx.Response, operation: str) -> str:
+    """Return bounded, sanitized diagnostics for an unsuccessful Ollama response."""
+    detail = ""
+    try:
+        body = response.json()
+    except ValueError:
+        body = None
+
+    if isinstance(body, dict) and isinstance(body.get("error"), str):
+        detail = body["error"]
+    else:
+        detail = response.text
+
+    detail = _SECRET_RE.sub(r"\1[redacted]", detail)
+    detail = _URL_CREDENTIAL_RE.sub(r"\1[redacted]@", detail)
+    detail = " ".join(detail.split())[:_OLLAMA_DETAIL_LIMIT]
+    if _OLLAMA_OOM_RE.search(detail):
+        diagnostic = _OLLAMA_OOM_MESSAGE
+    else:
+        diagnostic = f"Ollama {operation} request failed with HTTP {response.status_code}."
+
+    return f"{diagnostic} Ollama detail: {detail}" if detail else diagnostic
 
 
 @dataclass(frozen=True)
@@ -94,6 +133,8 @@ class OllamaEmbeddingProvider:
             async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
                 response = await client.post(f"{self.base_url}/api/embed", json=payload)
                 response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            raise ProviderError(format_ollama_http_error(exc.response, "embedding")) from exc
         except httpx.HTTPError as exc:
             raise ProviderError(f"Ollama embedding request failed: {exc}") from exc
 
@@ -202,6 +243,8 @@ class OllamaChatProvider:
             async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
                 response = await client.post(f"{self.base_url}/api/chat", json=payload)
                 response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            raise ProviderError(format_ollama_http_error(exc.response, "chat")) from exc
         except httpx.HTTPError as exc:
             raise ProviderError(f"Ollama chat request failed: {exc}") from exc
 
