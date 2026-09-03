@@ -16,13 +16,18 @@ from sialabs_local_rag.providers import (
 )
 from sialabs_local_rag.retrieval import RetrievalOptions, retrieve_sources
 from sialabs_local_rag.schemas import (
+    ChatDiagnostics,
     ChatResponse,
     ConversationMessage,
     DocumentResponse,
     IndexResetResponse,
     IndexStatusResponse,
+    PromptDiagnostics,
+    RetrievalDiagnostics,
+    RuntimeDiagnostics,
     RuntimeOptions,
     RuntimeTestResponse,
+    SourceChunk,
 )
 from sialabs_local_rag.settings import Settings
 from sialabs_local_rag.source_metadata import persist_chunk_source_metadata
@@ -37,6 +42,14 @@ _PROFILE_TOP_K = {
 
 class EmptyDocumentError(ValueError):
     """Raised when text cannot produce valid chunks."""
+
+
+class ChatGenerationError(ProviderError):
+    """A provider failure accompanied by privacy-safe RAG request diagnostics."""
+
+    def __init__(self, error: ProviderError, diagnostics: ChatDiagnostics) -> None:
+        super().__init__(str(error), error.diagnostics)
+        self.chat_diagnostics = diagnostics
 
 
 class RagService:
@@ -152,6 +165,23 @@ class RagService:
             collection_id=collection_id,
         )
         provider_runtime_options = to_provider_runtime_options(runtime_options)
+        runtime_diagnostics = RuntimeDiagnostics(
+            model=get_response_model(runtime_options, self.chat_provider.model),
+            num_ctx=(
+                runtime_options.num_ctx
+                if runtime_options and runtime_options.num_ctx is not None
+                else self.settings.ollama_num_ctx
+            ),
+            num_predict=runtime_options.num_predict if runtime_options else None,
+            num_gpu=(
+                runtime_options.num_gpu
+                if runtime_options and runtime_options.num_gpu is not None
+                else self.settings.ollama_num_gpu
+            ),
+            think=runtime_options.think if runtime_options else None,
+        )
+        prompt_diagnostics: PromptDiagnostics | None = None
+        generation_diagnostics = None
 
         if not sources:
             answer = (
@@ -164,11 +194,36 @@ class RagService:
                 sources=sources,
                 conversation_context=conversation_context,
             )
-            answer = await self.chat_provider.generate(
+            prompt_diagnostics = build_prompt_diagnostics(
+                question=question,
+                conversation_context=conversation_context,
+                sources=sources,
                 system_prompt=SYSTEM_PROMPT,
                 user_prompt=user_prompt,
-                runtime_options=provider_runtime_options,
             )
+            try:
+                generation = await self.chat_provider.generate(
+                    system_prompt=SYSTEM_PROMPT,
+                    user_prompt=user_prompt,
+                    runtime_options=provider_runtime_options,
+                )
+            except ProviderError as exc:
+                raise ChatGenerationError(
+                    exc,
+                    ChatDiagnostics(
+                        runtime=runtime_diagnostics,
+                        retrieval=RetrievalDiagnostics(
+                            requested_top_k=top_k,
+                            final_top_k=selected_top_k,
+                            selected_source_count=len(sources),
+                            retrieval_mode=self.settings.retrieval_mode,
+                        ),
+                        prompt=prompt_diagnostics,
+                        generation=exc.diagnostics,
+                    ),
+                ) from exc
+            answer = generation.content
+            generation_diagnostics = generation.diagnostics
 
         latency_ms = int((perf_counter() - started_at) * 1000)
         response_model = get_response_model(runtime_options, self.chat_provider.model)
@@ -179,6 +234,17 @@ class RagService:
             model=response_model,
             latency_ms=latency_ms,
             sources=sources,
+            diagnostics=ChatDiagnostics(
+                runtime=runtime_diagnostics,
+                retrieval=RetrievalDiagnostics(
+                    requested_top_k=top_k,
+                    final_top_k=selected_top_k,
+                    selected_source_count=len(sources),
+                    retrieval_mode=self.settings.retrieval_mode,
+                ),
+                prompt=prompt_diagnostics,
+                generation=generation_diagnostics,
+            ),
         )
 
         return ChatResponse(
@@ -191,6 +257,17 @@ class RagService:
             retrieval_mode=self.settings.retrieval_mode,
             collection_id=collection_id,
             latency_ms=latency_ms,
+            diagnostics=ChatDiagnostics(
+                runtime=runtime_diagnostics,
+                retrieval=RetrievalDiagnostics(
+                    requested_top_k=top_k,
+                    final_top_k=selected_top_k,
+                    selected_source_count=len(sources),
+                    retrieval_mode=self.settings.retrieval_mode,
+                ),
+                prompt=prompt_diagnostics,
+                generation=generation_diagnostics,
+            ),
         )
 
     def get_index_status(self) -> IndexStatusResponse:
@@ -212,7 +289,7 @@ class RagService:
         response_model = get_response_model(runtime_options, self.chat_provider.model)
 
         try:
-            answer = await self.chat_provider.generate(
+            generation = await self.chat_provider.generate(
                 system_prompt="Responda de forma curta para validar o runtime local.",
                 user_prompt=prompt,
                 runtime_options=provider_runtime_options,
@@ -222,8 +299,9 @@ class RagService:
                 provider=self.chat_provider.name,
                 model=response_model,
                 latency_ms=int((perf_counter() - started_at) * 1000),
-                answer=answer,
+                answer=generation.content,
                 error=None,
+                diagnostics=generation.diagnostics,
             )
         except ProviderError as exc:
             return RuntimeTestResponse(
@@ -233,6 +311,7 @@ class RagService:
                 latency_ms=int((perf_counter() - started_at) * 1000),
                 answer=None,
                 error=str(exc),
+                diagnostics=exc.diagnostics,
             )
 
 
@@ -260,4 +339,50 @@ def to_provider_runtime_options(
         keep_alive=runtime_options.keep_alive,
         temperature=runtime_options.temperature,
         think=runtime_options.think,
+        num_predict=runtime_options.num_predict,
     )
+
+
+def build_prompt_diagnostics(
+    question: str,
+    conversation_context: Sequence[ConversationMessage],
+    sources: Sequence[SourceChunk],
+    system_prompt: str,
+    user_prompt: str,
+) -> PromptDiagnostics:
+    question_chars = len(question)
+    prompt_without_conversation = build_rag_prompt(
+        question=question,
+        sources=sources,
+        conversation_context=(),
+    )
+    conversation_chars = max(
+        0,
+        len(user_prompt) - len(prompt_without_conversation) + len("(none)"),
+    )
+    retrieved_evidence_chars = sum(len(source.content) for source in sources)
+    prompt_without_sources = build_rag_prompt(
+        question=question,
+        sources=(),
+        conversation_context=conversation_context,
+    )
+    source_wrapper_chars = max(
+        0,
+        len(user_prompt) - len(prompt_without_sources) - retrieved_evidence_chars,
+    )
+    return PromptDiagnostics(
+        system_prompt_chars=len(system_prompt),
+        user_prompt_chars=len(user_prompt),
+        question_chars=question_chars,
+        conversation_chars=conversation_chars,
+        retrieved_evidence_chars=retrieved_evidence_chars,
+        source_wrapper_chars=source_wrapper_chars,
+        estimated_system_tokens=estimate_tokens(system_prompt),
+        estimated_user_tokens=estimate_tokens(user_prompt),
+        estimated_total_prompt_tokens=estimate_tokens(system_prompt) + estimate_tokens(user_prompt),
+    )
+
+
+def estimate_tokens(text: str) -> int:
+    """Return a cheap character-based prompt-token estimate, not a tokenizer count."""
+    return (len(text) + 3) // 4

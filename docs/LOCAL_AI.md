@@ -4,6 +4,20 @@
 
 The application separates retrieval from answer generation. Ollama provides the real local AI runtime; deterministic providers support automated validation without downloaded models.
 
+## RAG runtime diagnostics
+
+With the local app and Ollama already running, run controlled RAG cases without
+printing prompts, document content, or reasoning:
+
+```powershell
+cd backend
+uv run python scripts/run_rag_runtime_diagnostics.py --case all --question "Quais são as principais mudanças recomendadas para modernizar o MCP do Círculo?" --output diagnostics.json
+```
+
+The `A1`, `A2`, and `A3` cases use CPU mode, `think=false`, and `num_predict=384`;
+they vary only context and `top_k`. Output contains safe counts, timings, provider
+termination metadata, source IDs/counts, and failure classification.
+
 ## Ollama mode
 
 ```env

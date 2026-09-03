@@ -19,6 +19,55 @@ class RuntimeOptions(BaseModel):
     keep_alive: str | None = Field(default=None, max_length=24)
     temperature: float | None = Field(default=None, ge=0, le=2)
     think: bool | None = None
+    num_predict: int | None = Field(default=None, ge=1, le=32768)
+
+
+class RuntimeDiagnostics(BaseModel):
+    model: str
+    num_ctx: int | None = None
+    num_predict: int | None = None
+    num_gpu: int | None = None
+    think: bool | None = None
+
+
+class GenerationDiagnostics(BaseModel):
+    failure_classification: str | None = None
+    done: bool | None = None
+    done_reason: str | None = None
+    total_duration: int | None = None
+    load_duration: int | None = None
+    prompt_eval_count: int | None = None
+    prompt_eval_duration: int | None = None
+    eval_count: int | None = None
+    eval_duration: int | None = None
+    content_chars: int = 0
+    thinking_present: bool = False
+
+
+class PromptDiagnostics(BaseModel):
+    system_prompt_chars: int
+    user_prompt_chars: int
+    question_chars: int
+    conversation_chars: int
+    retrieved_evidence_chars: int
+    source_wrapper_chars: int | None = None
+    estimated_system_tokens: int
+    estimated_user_tokens: int
+    estimated_total_prompt_tokens: int
+
+
+class RetrievalDiagnostics(BaseModel):
+    requested_top_k: int | None = None
+    final_top_k: int
+    selected_source_count: int
+    retrieval_mode: Literal["dense", "hybrid"]
+
+
+class ChatDiagnostics(BaseModel):
+    runtime: RuntimeDiagnostics
+    retrieval: RetrievalDiagnostics
+    prompt: PromptDiagnostics | None = None
+    generation: GenerationDiagnostics | None = None
 
 
 class RuntimeConfigResponse(BaseModel):
@@ -42,6 +91,7 @@ class RuntimeTestResponse(BaseModel):
     latency_ms: int
     answer: str | None = None
     error: str | None = None
+    diagnostics: GenerationDiagnostics | None = None
 
 
 class PublicConfigResponse(BaseModel):
@@ -163,3 +213,4 @@ class ChatResponse(BaseModel):
     retrieval_mode: Literal["dense", "hybrid"]
     collection_id: str | None = None
     latency_ms: int
+    diagnostics: ChatDiagnostics | None = None

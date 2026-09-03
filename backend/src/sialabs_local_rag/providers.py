@@ -8,6 +8,7 @@ from typing import Protocol
 
 import httpx
 
+from sialabs_local_rag.schemas import GenerationDiagnostics
 from sialabs_local_rag.settings import Settings
 from sialabs_local_rag.vector_math import normalize_vector
 
@@ -31,6 +32,16 @@ _TOKEN_RE = re.compile(r"[\wÀ-ÿ]+", re.UNICODE)
 
 class ProviderError(RuntimeError):
     """Raised when an external AI provider cannot complete a request."""
+
+    def __init__(self, message: str, diagnostics: GenerationDiagnostics | None = None) -> None:
+        super().__init__(message)
+        self.diagnostics = diagnostics
+
+
+@dataclass(frozen=True)
+class ChatGenerationResult:
+    content: str
+    diagnostics: GenerationDiagnostics
 
 
 def format_ollama_http_error(response: httpx.Response, operation: str) -> str:
@@ -65,6 +76,7 @@ class ChatRuntimeOptions:
     keep_alive: str | None = None
     temperature: float | None = None
     think: bool | None = None
+    num_predict: int | None = None
 
 
 class EmbeddingProvider(Protocol):
@@ -84,7 +96,7 @@ class ChatProvider(Protocol):
         system_prompt: str,
         user_prompt: str,
         runtime_options: ChatRuntimeOptions | None = None,
-    ) -> str:
+    ) -> ChatGenerationResult:
         """Generate an answer from prompts."""
 
 
@@ -162,14 +174,18 @@ class MockChatProvider:
         system_prompt: str,
         user_prompt: str,
         runtime_options: ChatRuntimeOptions | None = None,
-    ) -> str:
+    ) -> ChatGenerationResult:
         del system_prompt, runtime_options
         context_lines = [line for line in user_prompt.splitlines() if line.startswith("Fonte")]
         source_count = len(context_lines)
-        return (
+        content = (
             "Resposta simulada para validação local. "
             f"Foram usadas {source_count} fontes recuperadas. "
             "Ative LLM_PROVIDER=ollama para gerar respostas com Gemma via Ollama."
+        )
+        return ChatGenerationResult(
+            content=content,
+            diagnostics=GenerationDiagnostics(content_chars=len(content)),
         )
 
 
@@ -199,7 +215,7 @@ class OllamaChatProvider:
         system_prompt: str,
         user_prompt: str,
         runtime_options: ChatRuntimeOptions | None = None,
-    ) -> str:
+    ) -> ChatGenerationResult:
         model = runtime_options.model if runtime_options and runtime_options.model else self.model
         temperature = (
             runtime_options.temperature
@@ -227,6 +243,8 @@ class OllamaChatProvider:
             options["num_ctx"] = num_ctx
         if num_gpu is not None:
             options["num_gpu"] = num_gpu
+        if runtime_options and runtime_options.num_predict is not None:
+            options["num_predict"] = runtime_options.num_predict
 
         payload: dict[str, object] = {
             "model": model,
@@ -247,26 +265,95 @@ class OllamaChatProvider:
                 response = await client.post(f"{self.base_url}/api/chat", json=payload)
                 response.raise_for_status()
         except httpx.HTTPStatusError as exc:
-            raise ProviderError(format_ollama_http_error(exc.response, "chat")) from exc
+            raise ProviderError(
+                format_ollama_http_error(exc.response, "chat"),
+                GenerationDiagnostics(
+                    failure_classification=(
+                        "gpu_oom"
+                        if _OLLAMA_OOM_RE.search(exc.response.text)
+                        else "provider_http_error"
+                    )
+                ),
+            ) from exc
         except httpx.HTTPError as exc:
-            raise ProviderError(f"Ollama chat request failed: {exc}") from exc
+            raise ProviderError(
+                f"Ollama chat request failed: {exc}",
+                GenerationDiagnostics(
+                    failure_classification="provider_timeout_or_connection_error"
+                ),
+            ) from exc
 
-        data = response.json()
+        try:
+            data = response.json()
+        except ValueError as exc:
+            raise ProviderError(
+                "Ollama chat response is invalid.",
+                GenerationDiagnostics(failure_classification="invalid_provider_response"),
+            ) from exc
+        if not isinstance(data, dict):
+            raise ProviderError(
+                "Ollama chat response is invalid.",
+                GenerationDiagnostics(failure_classification="invalid_provider_response"),
+            )
         message = data.get("message")
         if not isinstance(message, dict):
-            raise ProviderError("Ollama chat response is missing message content.")
+            raise ProviderError(
+                "Ollama chat response is missing message content.",
+                GenerationDiagnostics(failure_classification="invalid_provider_response"),
+            )
 
         content = message.get("content")
+        diagnostics = _ollama_generation_diagnostics(data, message, content)
         if not isinstance(content, str) or not content.strip():
             thinking = message.get("thinking")
             if isinstance(thinking, str) and thinking.strip():
                 raise ProviderError(
                     "The local model produced reasoning but no final answer. "
-                    "Disable thinking or increase the context window."
+                    "Disable thinking or increase the context window.",
+                    diagnostics.model_copy(update={"failure_classification": "empty_content"}),
                 )
-            raise ProviderError("Ollama chat response returned empty content.")
+            classification = (
+                "length_exhausted"
+                if diagnostics.done_reason == "length"
+                else "empty_content_unknown_cause"
+            )
+            raise ProviderError(
+                "Ollama chat response returned empty content.",
+                diagnostics.model_copy(update={"failure_classification": classification}),
+            )
 
-        return content.strip()
+        final_content = content.strip()
+        return ChatGenerationResult(
+            content=final_content,
+            diagnostics=diagnostics.model_copy(update={"content_chars": len(final_content)}),
+        )
+
+
+def _ollama_generation_diagnostics(
+    data: object,
+    message: dict[object, object],
+    content: object,
+) -> GenerationDiagnostics:
+    payload = data if isinstance(data, dict) else {}
+    thinking = message.get("thinking")
+    return GenerationDiagnostics(
+        done=payload.get("done") if isinstance(payload.get("done"), bool) else None,
+        done_reason=(
+            payload.get("done_reason") if isinstance(payload.get("done_reason"), str) else None
+        ),
+        total_duration=_safe_int(payload.get("total_duration")),
+        load_duration=_safe_int(payload.get("load_duration")),
+        prompt_eval_count=_safe_int(payload.get("prompt_eval_count")),
+        prompt_eval_duration=_safe_int(payload.get("prompt_eval_duration")),
+        eval_count=_safe_int(payload.get("eval_count")),
+        eval_duration=_safe_int(payload.get("eval_duration")),
+        content_chars=len(content) if isinstance(content, str) else 0,
+        thinking_present=isinstance(thinking, str) and bool(thinking.strip()),
+    )
+
+
+def _safe_int(value: object) -> int | None:
+    return value if isinstance(value, int) and not isinstance(value, bool) else None
 
 
 def create_embedding_provider(settings: Settings) -> EmbeddingProvider:

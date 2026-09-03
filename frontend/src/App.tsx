@@ -3,6 +3,7 @@ import type { FormEvent, KeyboardEvent } from 'react'
 
 import {
   askQuestion,
+  ApiRequestError,
   clearChatHistory,
   createDocument,
   getCollections,
@@ -16,6 +17,7 @@ import {
 import { SourceCard } from './SourceCard'
 import type {
   ChatResponse,
+  ChatDiagnostics,
   CollectionSummary,
   ConversationContextMessage,
   PublicConfig,
@@ -24,6 +26,7 @@ import type {
   RuntimeProfileName,
   RuntimeTestResponse,
   IndexStatusResponse,
+  GenerationDiagnostics,
 } from './types'
 import { useDocuments } from './hooks/useDocuments'
 
@@ -57,6 +60,7 @@ const fallbackRuntimeProfiles: Record<RuntimeProfileName, RuntimeOptions> = {
     keep_alive: '1m',
     temperature: 0.2,
     think: false,
+    num_predict: null,
   },
   balanced: {
     profile: 'balanced',
@@ -66,6 +70,7 @@ const fallbackRuntimeProfiles: Record<RuntimeProfileName, RuntimeOptions> = {
     keep_alive: '5m',
     temperature: 0.2,
     think: false,
+    num_predict: null,
   },
   strong: {
     profile: 'strong',
@@ -75,6 +80,7 @@ const fallbackRuntimeProfiles: Record<RuntimeProfileName, RuntimeOptions> = {
     keep_alive: '5m',
     temperature: 0.2,
     think: true,
+    num_predict: null,
   },
   custom: {
     profile: 'custom',
@@ -84,6 +90,7 @@ const fallbackRuntimeProfiles: Record<RuntimeProfileName, RuntimeOptions> = {
     keep_alive: '5m',
     temperature: 0.2,
     think: false,
+    num_predict: null,
   },
 }
 
@@ -174,6 +181,8 @@ const copy = {
     keepAlive: 'Keep alive',
     keepAliveAuto: 'keep_alive auto',
     temperature: 'Temperature',
+    outputBudget: 'Output tokens',
+    technicalDiagnostics: 'Technical diagnostics',
     thinkingSetting: 'Thinking',
     thinkingOn: 'Thinking on',
     thinkingOff: 'Thinking off',
@@ -286,6 +295,8 @@ const copy = {
     keepAlive: 'Manter carregado',
     keepAliveAuto: 'keep_alive automático',
     temperature: 'Temperatura',
+    outputBudget: 'Tokens de saída',
+    technicalDiagnostics: 'Diagnósticos técnicos',
     thinkingSetting: 'Raciocínio',
     thinkingOn: 'Raciocínio ativado',
     thinkingOff: 'Raciocínio desativado',
@@ -376,6 +387,67 @@ function buildConversationContext(messages: ChatMessage[]): ConversationContextM
   return context
 }
 
+function isChatDiagnostics(
+  diagnostics: ChatDiagnostics | GenerationDiagnostics,
+): diagnostics is ChatDiagnostics {
+  return 'runtime' in diagnostics
+}
+
+function TechnicalDiagnostics({
+  diagnostics,
+  title,
+}: {
+  diagnostics: ChatDiagnostics | GenerationDiagnostics
+  title: string
+}) {
+  const chatDiagnostics = isChatDiagnostics(diagnostics) ? diagnostics : null
+  const generation: GenerationDiagnostics | null | undefined = chatDiagnostics
+    ? chatDiagnostics.generation
+    : (diagnostics as GenerationDiagnostics)
+  const values: Array<[string, string | number | boolean | null | undefined]> = [
+    ['failure', generation?.failure_classification],
+    ['done', generation?.done],
+    ['done reason', generation?.done_reason],
+    ['content chars', generation?.content_chars],
+    ['thinking present', generation?.thinking_present],
+    ['provider prompt tokens', generation?.prompt_eval_count],
+    ['provider output tokens', generation?.eval_count],
+    ['provider total ns', generation?.total_duration],
+    ['load ns', generation?.load_duration],
+    ['prompt eval ns', generation?.prompt_eval_duration],
+    ['generation ns', generation?.eval_duration],
+  ]
+
+  if (chatDiagnostics) {
+    values.unshift(
+      ['model', chatDiagnostics.runtime.model],
+      ['ctx', chatDiagnostics.runtime.num_ctx],
+      ['num_predict', chatDiagnostics.runtime.num_predict],
+      ['gpu', chatDiagnostics.runtime.num_gpu],
+      ['think', chatDiagnostics.runtime.think],
+      ['top_k', chatDiagnostics.retrieval.final_top_k],
+      ['selected sources', chatDiagnostics.retrieval.selected_source_count],
+      ['estimated prompt tokens', chatDiagnostics.prompt?.estimated_total_prompt_tokens],
+    )
+  }
+
+  return (
+    <details className="diagnostics-block">
+      <summary>{title}</summary>
+      <dl className="diagnostics-list">
+        {values
+          .filter(([, value]) => value !== null && value !== undefined)
+          .map(([label, value]) => (
+            <div key={label}>
+              <dt>{label}</dt>
+              <dd>{String(value)}</dd>
+            </div>
+          ))}
+      </dl>
+    </details>
+  )
+}
+
 function App() {
   const [language, setLanguage] = useState<Language>('en')
   const [theme, setTheme] = useState<Theme>('light')
@@ -399,6 +471,9 @@ function App() {
   const [isTestingRuntime, setIsTestingRuntime] = useState(false)
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [lastDiagnostics, setLastDiagnostics] = useState<
+    ChatDiagnostics | GenerationDiagnostics | null
+  >(null)
   const { documents, refreshDocuments, removeDocument } = useDocuments()
 
   const t = copy[language]
@@ -619,6 +694,7 @@ function App() {
     setQuestion('')
     setIsLoading(true)
     setError(null)
+    setLastDiagnostics(null)
 
     try {
       const response = await askQuestion(
@@ -636,6 +712,7 @@ function App() {
       }
       setChatMessages((currentMessages) => [...currentMessages, assistantMessage])
     } catch (caught) {
+      if (caught instanceof ApiRequestError) setLastDiagnostics(caught.diagnostics)
       setError(caught instanceof Error ? caught.message : (t.chatError as string))
       setQuestion(submittedQuestion)
     } finally {
@@ -769,7 +846,14 @@ function App() {
         </div>
       </section>
 
-      {error && <div className="alert">{error}</div>}
+      {error && (
+        <div className="alert">
+          <p>{error}</p>
+          {lastDiagnostics && (
+            <TechnicalDiagnostics diagnostics={lastDiagnostics} title={t.technicalDiagnostics as string} />
+          )}
+        </div>
+      )}
 
       <section className="grid two-columns ingest-grid">
         <section className="card action-card">
@@ -965,6 +1049,12 @@ function App() {
                     </div>
                   </details>
                 )}
+                {message.response?.diagnostics && (
+                  <TechnicalDiagnostics
+                    diagnostics={message.response.diagnostics}
+                    title={t.technicalDiagnostics as string}
+                  />
+                )}
               </article>
             ))}
 
@@ -1069,6 +1159,17 @@ function App() {
                 />
               </label>
               <label>
+                {t.outputBudget as string}
+                <input
+                  min={1}
+                  type="number"
+                  value={runtimeOptions.num_predict ?? ''}
+                  onChange={(event) =>
+                    updateRuntimeOption('num_predict', parseOptionalNumber(event.target.value))
+                  }
+                />
+              </label>
+              <label>
                 {t.thinkingSetting as string}
                 <input
                   checked={runtimeOptions.think ?? false}
@@ -1083,6 +1184,7 @@ function App() {
               <span>ctx {runtimeOptions.num_ctx ?? (t.gpuAuto as string)}</span>
               <span>gpu {runtimeOptions.num_gpu ?? (t.gpuAuto as string)}</span>
               <span>{runtimeOptions.think ? (t.thinkingOn as string) : (t.thinkingOff as string)}</span>
+              {runtimeOptions.num_predict && <span>predict {runtimeOptions.num_predict}</span>}
               <span>{runtimeOptions.keep_alive || t.keepAliveAuto}</span>
             </div>
 
@@ -1098,6 +1200,12 @@ function App() {
                 </p>
                 {runtimeTestResult.answer && <p>{runtimeTestResult.answer}</p>}
                 {runtimeTestResult.error && <p>{runtimeTestResult.error}</p>}
+                {runtimeTestResult.diagnostics && (
+                  <TechnicalDiagnostics
+                    diagnostics={runtimeTestResult.diagnostics}
+                    title={t.technicalDiagnostics as string}
+                  />
+                )}
               </div>
             )}
           </>

@@ -20,6 +20,7 @@ test.describe('integrated local RAG flow', () => {
     await dialog.getByLabel('Title').fill(title)
     await dialog.getByLabel('Document content').fill(evidence)
     await dialog.getByRole('button', { name: 'Add to base' }).click()
+    await expect(dialog).not.toBeVisible()
 
     const documentsResponse = await request.get(`${API_URL}/api/documents`)
     expect(documentsResponse.ok()).toBeTruthy()

@@ -12,6 +12,7 @@ from uuid import uuid4
 from sialabs_local_rag.chunking import estimate_tokens
 from sialabs_local_rag.database import Database
 from sialabs_local_rag.schemas import (
+    ChatDiagnostics,
     ChatHistoryClearResponse,
     DocumentResponse,
     IndexResetResponse,
@@ -346,10 +347,13 @@ class Storage:
         model: str,
         latency_ms: int,
         sources: Sequence[SourceChunk],
+        diagnostics: ChatDiagnostics | None = None,
     ) -> None:
-        metadata = {
+        metadata: dict[str, object] = {
             "sources": [source.model_dump(exclude={"content"}) for source in sources],
         }
+        if diagnostics is not None:
+            metadata["diagnostics"] = diagnostics.model_dump(exclude_none=True)
         with self.database.connect() as connection:
             connection.execute(
                 """

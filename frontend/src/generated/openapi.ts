@@ -254,6 +254,13 @@ export interface components {
             /** Title */
             title?: string | null;
         };
+        /** ChatDiagnostics */
+        ChatDiagnostics: {
+            runtime: components["schemas"]["RuntimeDiagnostics"];
+            retrieval: components["schemas"]["RetrievalDiagnostics"];
+            prompt?: components["schemas"]["PromptDiagnostics"] | null;
+            generation?: components["schemas"]["GenerationDiagnostics"] | null;
+        };
         /** ChatHistoryClearResponse */
         ChatHistoryClearResponse: {
             /** Messages Deleted */
@@ -294,6 +301,7 @@ export interface components {
             collection_id?: string | null;
             /** Latency Ms */
             latency_ms: number;
+            diagnostics?: components["schemas"]["ChatDiagnostics"] | null;
         };
         /** CollectionListResponse */
         CollectionListResponse: {
@@ -369,6 +377,37 @@ export interface components {
             /** Updated At */
             updated_at: string;
         };
+        /** GenerationDiagnostics */
+        GenerationDiagnostics: {
+            /** Failure Classification */
+            failure_classification?: string | null;
+            /** Done */
+            done?: boolean | null;
+            /** Done Reason */
+            done_reason?: string | null;
+            /** Total Duration */
+            total_duration?: number | null;
+            /** Load Duration */
+            load_duration?: number | null;
+            /** Prompt Eval Count */
+            prompt_eval_count?: number | null;
+            /** Prompt Eval Duration */
+            prompt_eval_duration?: number | null;
+            /** Eval Count */
+            eval_count?: number | null;
+            /** Eval Duration */
+            eval_duration?: number | null;
+            /**
+             * Content Chars
+             * @default 0
+             */
+            content_chars: number;
+            /**
+             * Thinking Present
+             * @default false
+             */
+            thinking_present: boolean;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -425,6 +464,27 @@ export interface components {
             /** Chat Messages Deleted */
             chat_messages_deleted: number;
         };
+        /** PromptDiagnostics */
+        PromptDiagnostics: {
+            /** System Prompt Chars */
+            system_prompt_chars: number;
+            /** User Prompt Chars */
+            user_prompt_chars: number;
+            /** Question Chars */
+            question_chars: number;
+            /** Conversation Chars */
+            conversation_chars: number;
+            /** Retrieved Evidence Chars */
+            retrieved_evidence_chars: number;
+            /** Source Wrapper Chars */
+            source_wrapper_chars?: number | null;
+            /** Estimated System Tokens */
+            estimated_system_tokens: number;
+            /** Estimated User Tokens */
+            estimated_user_tokens: number;
+            /** Estimated Total Prompt Tokens */
+            estimated_total_prompt_tokens: number;
+        };
         /** PublicConfigResponse */
         PublicConfigResponse: {
             /** App Name */
@@ -446,6 +506,20 @@ export interface components {
             /** Chunk Overlap */
             chunk_overlap: number;
         };
+        /** RetrievalDiagnostics */
+        RetrievalDiagnostics: {
+            /** Requested Top K */
+            requested_top_k?: number | null;
+            /** Final Top K */
+            final_top_k: number;
+            /** Selected Source Count */
+            selected_source_count: number;
+            /**
+             * Retrieval Mode
+             * @enum {string}
+             */
+            retrieval_mode: "dense" | "hybrid";
+        };
         /** RuntimeConfigResponse */
         RuntimeConfigResponse: {
             /** Llm Provider */
@@ -461,6 +535,19 @@ export interface components {
             profiles: {
                 [key: string]: components["schemas"]["RuntimeOptions"];
             };
+        };
+        /** RuntimeDiagnostics */
+        RuntimeDiagnostics: {
+            /** Model */
+            model: string;
+            /** Num Ctx */
+            num_ctx?: number | null;
+            /** Num Predict */
+            num_predict?: number | null;
+            /** Num Gpu */
+            num_gpu?: number | null;
+            /** Think */
+            think?: boolean | null;
         };
         /** RuntimeOptions */
         RuntimeOptions: {
@@ -478,6 +565,8 @@ export interface components {
             temperature?: number | null;
             /** Think */
             think?: boolean | null;
+            /** Num Predict */
+            num_predict?: number | null;
         };
         /** RuntimeTestRequest */
         RuntimeTestRequest: {
@@ -502,6 +591,7 @@ export interface components {
             answer?: string | null;
             /** Error */
             error?: string | null;
+            diagnostics?: components["schemas"]["GenerationDiagnostics"] | null;
         };
         /** SourceChunk */
         SourceChunk: {

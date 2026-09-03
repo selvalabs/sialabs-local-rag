@@ -598,7 +598,8 @@ h3 {
   text-transform: uppercase;
 }
 
-.sources-block {
+.sources-block,
+.diagnostics-block {
   background: var(--card-solid);
   border: 1px solid var(--field-border);
   border-radius: 16px;
@@ -606,7 +607,8 @@ h3 {
   padding: 0;
 }
 
-.sources-block > summary {
+.sources-block > summary,
+.diagnostics-block > summary {
   align-items: center;
   cursor: pointer;
   display: flex;
@@ -619,11 +621,13 @@ h3 {
 }
 
 .sources-block > summary::-webkit-details-marker,
+.diagnostics-block > summary::-webkit-details-marker,
 .source-detail > summary::-webkit-details-marker {
   display: none;
 }
 
-.sources-block[open] > summary {
+.sources-block[open] > summary,
+.diagnostics-block[open] > summary {
   border-bottom: 1px solid var(--field-border);
 }
 
