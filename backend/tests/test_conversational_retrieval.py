@@ -4,9 +4,10 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from sialabs_local_rag.database import Database
+from sialabs_local_rag.prompting import SYSTEM_PROMPT, build_rag_prompt
 from sialabs_local_rag.providers import ChatGenerationResult, ChatRuntimeOptions
-from sialabs_local_rag.schemas import ConversationMessage, GenerationDiagnostics
-from sialabs_local_rag.service import RagService
+from sialabs_local_rag.schemas import ConversationMessage, GenerationDiagnostics, SourceChunk
+from sialabs_local_rag.service import RagService, build_prompt_diagnostics
 from sialabs_local_rag.settings import Settings
 from sialabs_local_rag.storage import ChunkInput, Storage
 
@@ -152,3 +153,54 @@ async def test_standalone_question_without_context_keeps_identical_query(tmp_pat
 
     assert response.retrieval_query == "Explain the Cedar remote-work policy."
     assert response.sources[0].document_title == "Cedar Remote Work"
+
+
+def test_prompt_diagnostics_match_formatted_conversation_and_source_wrappers() -> None:
+    conversation = [
+        ConversationMessage(role="user", content="discarded-0"),
+        ConversationMessage(role="user", content="discarded-1"),
+        ConversationMessage(role="user", content="discarded-2"),
+        ConversationMessage(role="user", content="discarded-3"),
+        ConversationMessage(role="assistant", content="a" * 1500),
+        ConversationMessage(role="user", content="recent question"),
+        ConversationMessage(role="assistant", content="recent answer"),
+        ConversationMessage(role="user", content="latest context"),
+        ConversationMessage(role="assistant", content="latest answer"),
+    ]
+    source = SourceChunk(
+        chunk_id="chunk-1",
+        document_id="document-1",
+        document_title="Evidence",
+        chunk_index=0,
+        score=0.9,
+        content="retrieved evidence",
+    )
+    question = "What does the evidence say?"
+    user_prompt = build_rag_prompt(question, [source], conversation)
+
+    diagnostics = build_prompt_diagnostics(
+        question=question,
+        conversation_context=conversation,
+        sources=[source],
+        system_prompt=SYSTEM_PROMPT,
+        user_prompt=user_prompt,
+    )
+
+    formatted_conversation = "\n".join(
+        [
+            "User: discarded-1",
+            "User: discarded-2",
+            "User: discarded-3",
+            f"Assistant: {'a' * 1200}",
+            "User: recent question",
+            "Assistant: recent answer",
+            "User: latest context",
+            "Assistant: latest answer",
+        ]
+    )
+    prompt_without_sources = build_rag_prompt(question, [], conversation)
+    assert diagnostics.conversation_chars == len(formatted_conversation)
+    assert diagnostics.conversation_chars < sum(len(message.content) for message in conversation)
+    assert diagnostics.source_wrapper_chars == (
+        len(user_prompt) - len(prompt_without_sources) - len(source.content)
+    )

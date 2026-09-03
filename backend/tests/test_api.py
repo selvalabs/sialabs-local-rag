@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 
 from sialabs_local_rag.providers import ChatGenerationResult, ChatRuntimeOptions, ProviderError
-from sialabs_local_rag.schemas import GenerationDiagnostics
+from sialabs_local_rag.schemas import GenerationDiagnostics, RuntimeOptions
 
 
 def build_minimal_pdf_with_text(text: str) -> bytes:
@@ -120,7 +120,13 @@ def test_chat_failure_returns_safe_structured_generation_diagnostics(client: Tes
         },
     )
 
-    response = client.post("/api/chat", json={"question": "What does the roadmap say?"})
+    response = client.post(
+        "/api/chat",
+        json={
+            "question": "What does the roadmap say?",
+            "runtime_options": RuntimeOptions(num_ctx=2048).model_dump(exclude_none=True),
+        },
+    )
 
     assert response.status_code == 503
     detail = response.json()["detail"]

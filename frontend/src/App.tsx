@@ -432,7 +432,7 @@ function TechnicalDiagnostics({
   }
 
   return (
-    <details className="sources-block diagnostics-block">
+    <details className="diagnostics-block">
       <summary>{title}</summary>
       <dl className="diagnostics-list">
         {values

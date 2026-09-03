@@ -173,6 +173,30 @@ async def test_ollama_chat_omits_or_serializes_num_predict(monkeypatch: pytest.M
 
 
 @pytest.mark.asyncio
+async def test_ollama_chat_classifies_malformed_success_response(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakeClient:
+        async def __aenter__(self) -> FakeClient:
+            return self
+
+        async def __aexit__(self, *_args: object) -> None:
+            return None
+
+        async def post(self, *_args: object, **_kwargs: object) -> httpx.Response:
+            return response(200, "not valid JSON")
+
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **_kwargs: FakeClient())
+    provider = OllamaChatProvider("http://ollama.local", "gemma4:e2b", 5, 0.2, 1024, None, "5m")
+
+    with pytest.raises(ProviderError, match="response is invalid") as caught:
+        await provider.generate("system", "test")
+
+    assert caught.value.diagnostics is not None
+    assert caught.value.diagnostics.failure_classification == "invalid_provider_response"
+
+
+@pytest.mark.asyncio
 async def test_ollama_chat_rejects_reasoning_without_a_final_answer(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

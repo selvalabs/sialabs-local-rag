@@ -351,11 +351,24 @@ def build_prompt_diagnostics(
     user_prompt: str,
 ) -> PromptDiagnostics:
     question_chars = len(question)
-    conversation_chars = sum(len(message.content) for message in conversation_context)
+    prompt_without_conversation = build_rag_prompt(
+        question=question,
+        sources=sources,
+        conversation_context=(),
+    )
+    conversation_chars = max(
+        0,
+        len(user_prompt) - len(prompt_without_conversation) + len("(none)"),
+    )
     retrieved_evidence_chars = sum(len(source.content) for source in sources)
+    prompt_without_sources = build_rag_prompt(
+        question=question,
+        sources=(),
+        conversation_context=conversation_context,
+    )
     source_wrapper_chars = max(
         0,
-        len(user_prompt) - question_chars - conversation_chars - retrieved_evidence_chars,
+        len(user_prompt) - len(prompt_without_sources) - retrieved_evidence_chars,
     )
     return PromptDiagnostics(
         system_prompt_chars=len(system_prompt),

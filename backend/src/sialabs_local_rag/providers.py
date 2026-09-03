@@ -283,7 +283,13 @@ class OllamaChatProvider:
                 ),
             ) from exc
 
-        data = response.json()
+        try:
+            data = response.json()
+        except ValueError as exc:
+            raise ProviderError(
+                "Ollama chat response is invalid.",
+                GenerationDiagnostics(failure_classification="invalid_provider_response"),
+            ) from exc
         if not isinstance(data, dict):
             raise ProviderError(
                 "Ollama chat response is invalid.",
