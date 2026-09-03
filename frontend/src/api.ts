@@ -1,5 +1,6 @@
 import type {
   ChatResponse,
+  ChatDiagnostics,
   CollectionListResponse,
   CollectionSummary,
   ConversationContextMessage,
@@ -11,10 +12,20 @@ import type {
   RuntimeConfig,
   RuntimeOptions,
   RuntimeTestResponse,
+  GenerationDiagnostics,
 } from './types'
 import type { ChatRequest } from './api/generated'
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
+
+export class ApiRequestError extends Error {
+  diagnostics: ChatDiagnostics | GenerationDiagnostics | null
+
+  constructor(message: string, diagnostics: ChatDiagnostics | GenerationDiagnostics | null = null) {
+    super(message)
+    this.diagnostics = diagnostics
+  }
+}
 
 async function fetchApi(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   try {
@@ -30,13 +41,23 @@ async function fetchApi(input: RequestInfo | URL, init?: RequestInit): Promise<R
 async function parseJsonResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     let detail = `Request failed with status ${response.status}`
+    let diagnostics: ChatDiagnostics | GenerationDiagnostics | null = null
     try {
-      const errorBody = (await response.json()) as { detail?: unknown }
+      const errorBody = (await response.json()) as {
+        detail?: unknown
+      }
       if (typeof errorBody.detail === 'string') detail = errorBody.detail
+      if (errorBody.detail && typeof errorBody.detail === 'object') {
+        const structuredDetail = errorBody.detail as { message?: unknown; diagnostics?: unknown }
+        if (typeof structuredDetail.message === 'string') detail = structuredDetail.message
+        if (structuredDetail.diagnostics && typeof structuredDetail.diagnostics === 'object') {
+          diagnostics = structuredDetail.diagnostics as ChatDiagnostics | GenerationDiagnostics
+        }
+      }
     } catch {
       // Preserve default message when body is not JSON.
     }
-    throw new Error(detail)
+    throw new ApiRequestError(detail, diagnostics)
   }
   return (await response.json()) as T
 }

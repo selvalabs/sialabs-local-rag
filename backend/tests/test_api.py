@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
+from sialabs_local_rag.providers import ChatGenerationResult, ChatRuntimeOptions, ProviderError
+from sialabs_local_rag.schemas import GenerationDiagnostics
+
 
 def build_minimal_pdf_with_text(text: str) -> bytes:
     escaped_text = text.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
@@ -37,8 +40,7 @@ def build_minimal_pdf_with_text(text: str) -> bytes:
         pdf += f"{offset:010d} 00000 n \n".encode("ascii")
 
     pdf += (
-        f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\n"
-        f"startxref\n{xref_offset}\n%%EOF\n"
+        f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref_offset}\n%%EOF\n"
     ).encode("ascii")
 
     return pdf
@@ -80,6 +82,54 @@ def test_create_document_and_chat(client: TestClient) -> None:
     assert body["sources"][0]["retrieval_channels"]
     assert body["sources"]
     assert body["sources"][0]["document_title"] == "SoberanIA Labs Portfolio"
+    assert body["diagnostics"]["retrieval"]["selected_source_count"] == 1
+    assert body["diagnostics"]["prompt"]["estimated_total_prompt_tokens"] > 0
+    assert body["diagnostics"]["generation"]["content_chars"] == len(body["answer"])
+    assert "SoberanIA Labs Portfolio" not in str(body["diagnostics"])
+
+
+def test_chat_failure_returns_safe_structured_generation_diagnostics(client: TestClient) -> None:
+    class FailingChatProvider:
+        name = "test"
+        model = "test-model"
+
+        async def generate(
+            self,
+            system_prompt: str,
+            user_prompt: str,
+            runtime_options: ChatRuntimeOptions | None = None,
+        ) -> ChatGenerationResult:
+            del system_prompt, user_prompt, runtime_options
+            raise ProviderError(
+                "Ollama chat response returned empty content.",
+                GenerationDiagnostics(
+                    failure_classification="empty_content_unknown_cause",
+                    content_chars=0,
+                    thinking_present=False,
+                    done_reason="stop",
+                ),
+            )
+
+    client.app.state.rag_service.chat_provider = FailingChatProvider()
+    client.post(
+        "/api/documents",
+        json={
+            "title": "Private MCP roadmap",
+            "content": "PRIVATE-SOURCE-TEXT must never appear in diagnostics or errors.",
+            "source_type": "manual",
+        },
+    )
+
+    response = client.post("/api/chat", json={"question": "What does the roadmap say?"})
+
+    assert response.status_code == 503
+    detail = response.json()["detail"]
+    diagnostics = detail["diagnostics"]
+    assert diagnostics["generation"]["failure_classification"] == "empty_content_unknown_cause"
+    assert diagnostics["runtime"]["num_ctx"] == 2048
+    assert diagnostics["retrieval"]["selected_source_count"] == 1
+    assert diagnostics["prompt"]["estimated_total_prompt_tokens"] > 0
+    assert "PRIVATE-SOURCE-TEXT" not in str(detail)
 
 
 def test_index_status_records_embedding_signature(client: TestClient) -> None:
@@ -88,8 +138,7 @@ def test_index_status_records_embedding_signature(client: TestClient) -> None:
         json={
             "title": "Embedding signature",
             "content": (
-                "This document establishes deterministic hash embeddings "
-                "for the local index."
+                "This document establishes deterministic hash embeddings for the local index."
             ),
             "source_type": "manual",
         },
@@ -143,8 +192,7 @@ def test_legacy_embedding_index_returns_reindex_conflict(client: TestClient) -> 
         json={
             "title": "Legacy simulation",
             "content": (
-                "This document is used to simulate an index created before "
-                "metadata existed."
+                "This document is used to simulate an index created before metadata existed."
             ),
             "source_type": "manual",
         },

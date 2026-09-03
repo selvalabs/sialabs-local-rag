@@ -8,6 +8,7 @@ export type RuntimeOptions = {
   keep_alive?: string | null
   temperature?: number | null
   think?: boolean | null
+  num_predict?: number | null
 }
 
 export type RuntimeConfig = {
@@ -26,6 +27,7 @@ export type RuntimeTestResponse = {
   latency_ms: number
   answer?: string | null
   error?: string | null
+  diagnostics?: components['schemas']['GenerationDiagnostics'] | null
 }
 
 export type PublicConfig = {
@@ -55,6 +57,7 @@ import type {
   ConversationMessage as GeneratedConversationMessage,
   SourceChunk as GeneratedSourceChunk,
 } from './api/generated'
+import type { components } from './generated/openapi'
 
 export type GeneratedChatResponseContract = GeneratedChatResponse
 export type GeneratedSourceChunkContract = GeneratedSourceChunk
@@ -97,6 +100,8 @@ export type IndexResetResponse = {
 }
 
 export type SourceChunk = GeneratedSourceChunk
+export type ChatDiagnostics = components['schemas']['ChatDiagnostics']
+export type GenerationDiagnostics = components['schemas']['GenerationDiagnostics']
 
 export type ConversationContextMessage = GeneratedConversationMessage
 

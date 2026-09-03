@@ -4,8 +4,8 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from sialabs_local_rag.database import Database
-from sialabs_local_rag.providers import ChatRuntimeOptions
-from sialabs_local_rag.schemas import ConversationMessage
+from sialabs_local_rag.providers import ChatGenerationResult, ChatRuntimeOptions
+from sialabs_local_rag.schemas import ConversationMessage, GenerationDiagnostics
 from sialabs_local_rag.service import RagService
 from sialabs_local_rag.settings import Settings
 from sialabs_local_rag.storage import ChunkInput, Storage
@@ -40,10 +40,13 @@ class RecordingChatProvider:
         system_prompt: str,
         user_prompt: str,
         runtime_options: ChatRuntimeOptions | None = None,
-    ) -> str:
+    ) -> ChatGenerationResult:
         del system_prompt, runtime_options
         self.prompts.append(user_prompt)
-        return "grounded answer"
+        return ChatGenerationResult(
+            content="grounded answer",
+            diagnostics=GenerationDiagnostics(content_chars=len("grounded answer")),
+        )
 
 
 def _build_service(tmp_path: Path) -> tuple[RagService, Storage, RecordingChatProvider]:

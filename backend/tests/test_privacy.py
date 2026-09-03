@@ -10,7 +10,13 @@ from starlette.requests import Request
 
 from sialabs_local_rag.api import require_local_data_reset
 from sialabs_local_rag.database import Database
-from sialabs_local_rag.schemas import SourceChunk
+from sialabs_local_rag.schemas import (
+    ChatDiagnostics,
+    GenerationDiagnostics,
+    RetrievalDiagnostics,
+    RuntimeDiagnostics,
+    SourceChunk,
+)
 from sialabs_local_rag.settings import Settings
 from sialabs_local_rag.storage import ChunkInput, Storage
 
@@ -55,6 +61,43 @@ def test_new_chat_records_do_not_duplicate_source_content(tmp_path: Path) -> Non
     assert metadata["sources"][0]["document_id"] == "doc-1"
     assert "content" not in metadata["sources"][0]
     assert "sensitive chunk text" not in str(row["metadata_json"])
+
+
+def test_persisted_diagnostics_contain_only_safe_metadata(tmp_path: Path) -> None:
+    database = Database(f"sqlite:///{tmp_path / 'diagnostics-privacy.db'}")
+    database.init_schema()
+    storage = Storage(database)
+
+    storage.create_chat_record(
+        question="What is private?",
+        answer="A grounded answer.",
+        provider="mock",
+        model="test-model",
+        latency_ms=12,
+        sources=[_source(content="sensitive chunk text")],
+        diagnostics=ChatDiagnostics(
+            runtime=RuntimeDiagnostics(model="test-model", num_ctx=2048, think=False),
+            retrieval=RetrievalDiagnostics(
+                final_top_k=2,
+                selected_source_count=1,
+                retrieval_mode="hybrid",
+            ),
+            generation=GenerationDiagnostics(
+                done_reason="stop",
+                content_chars=18,
+                thinking_present=True,
+            ),
+        ),
+    )
+
+    with database.connect() as connection:
+        row = connection.execute("SELECT metadata_json FROM chat_messages").fetchone()
+
+    assert row is not None
+    persisted = str(row["metadata_json"])
+    assert "sensitive chunk text" not in persisted
+    assert "private reasoning" not in persisted
+    assert '"thinking_present": true' in persisted
 
 
 def test_schema_v3_scrubs_source_content_from_existing_chat_metadata(tmp_path: Path) -> None:

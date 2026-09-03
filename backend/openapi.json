@@ -428,6 +428,42 @@
         ],
         "title": "Body_upload_document_api_documents_upload_post"
       },
+      "ChatDiagnostics": {
+        "properties": {
+          "runtime": {
+            "$ref": "#/components/schemas/RuntimeDiagnostics"
+          },
+          "retrieval": {
+            "$ref": "#/components/schemas/RetrievalDiagnostics"
+          },
+          "prompt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PromptDiagnostics"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "generation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GenerationDiagnostics"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "runtime",
+          "retrieval"
+        ],
+        "title": "ChatDiagnostics"
+      },
       "ChatHistoryClearResponse": {
         "properties": {
           "messages_deleted": {
@@ -551,6 +587,16 @@
           "latency_ms": {
             "type": "integer",
             "title": "Latency Ms"
+          },
+          "diagnostics": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChatDiagnostics"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -756,6 +802,121 @@
         ],
         "title": "DocumentResponse"
       },
+      "GenerationDiagnostics": {
+        "properties": {
+          "failure_classification": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Classification"
+          },
+          "done": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Done"
+          },
+          "done_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Done Reason"
+          },
+          "total_duration": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Duration"
+          },
+          "load_duration": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Load Duration"
+          },
+          "prompt_eval_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt Eval Count"
+          },
+          "prompt_eval_duration": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt Eval Duration"
+          },
+          "eval_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eval Count"
+          },
+          "eval_duration": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eval Duration"
+          },
+          "content_chars": {
+            "type": "integer",
+            "title": "Content Chars",
+            "default": 0
+          },
+          "thinking_present": {
+            "type": "boolean",
+            "title": "Thinking Present",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "GenerationDiagnostics"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -921,6 +1082,65 @@
         ],
         "title": "LocalDataResetResponse"
       },
+      "PromptDiagnostics": {
+        "properties": {
+          "system_prompt_chars": {
+            "type": "integer",
+            "title": "System Prompt Chars"
+          },
+          "user_prompt_chars": {
+            "type": "integer",
+            "title": "User Prompt Chars"
+          },
+          "question_chars": {
+            "type": "integer",
+            "title": "Question Chars"
+          },
+          "conversation_chars": {
+            "type": "integer",
+            "title": "Conversation Chars"
+          },
+          "retrieved_evidence_chars": {
+            "type": "integer",
+            "title": "Retrieved Evidence Chars"
+          },
+          "source_wrapper_chars": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Wrapper Chars"
+          },
+          "estimated_system_tokens": {
+            "type": "integer",
+            "title": "Estimated System Tokens"
+          },
+          "estimated_user_tokens": {
+            "type": "integer",
+            "title": "Estimated User Tokens"
+          },
+          "estimated_total_prompt_tokens": {
+            "type": "integer",
+            "title": "Estimated Total Prompt Tokens"
+          }
+        },
+        "type": "object",
+        "required": [
+          "system_prompt_chars",
+          "user_prompt_chars",
+          "question_chars",
+          "conversation_chars",
+          "retrieved_evidence_chars",
+          "estimated_system_tokens",
+          "estimated_user_tokens",
+          "estimated_total_prompt_tokens"
+        ],
+        "title": "PromptDiagnostics"
+      },
       "PublicConfigResponse": {
         "properties": {
           "app_name": {
@@ -974,6 +1194,44 @@
         ],
         "title": "PublicConfigResponse"
       },
+      "RetrievalDiagnostics": {
+        "properties": {
+          "requested_top_k": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested Top K"
+          },
+          "final_top_k": {
+            "type": "integer",
+            "title": "Final Top K"
+          },
+          "selected_source_count": {
+            "type": "integer",
+            "title": "Selected Source Count"
+          },
+          "retrieval_mode": {
+            "type": "string",
+            "enum": [
+              "dense",
+              "hybrid"
+            ],
+            "title": "Retrieval Mode"
+          }
+        },
+        "type": "object",
+        "required": [
+          "final_top_k",
+          "selected_source_count",
+          "retrieval_mode"
+        ],
+        "title": "RetrievalDiagnostics"
+      },
       "RuntimeConfigResponse": {
         "properties": {
           "llm_provider": {
@@ -1013,6 +1271,63 @@
           "profiles"
         ],
         "title": "RuntimeConfigResponse"
+      },
+      "RuntimeDiagnostics": {
+        "properties": {
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "num_ctx": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Num Ctx"
+          },
+          "num_predict": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Num Predict"
+          },
+          "num_gpu": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Num Gpu"
+          },
+          "think": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Think"
+          }
+        },
+        "type": "object",
+        "required": [
+          "model"
+        ],
+        "title": "RuntimeDiagnostics"
       },
       "RuntimeOptions": {
         "properties": {
@@ -1107,6 +1422,19 @@
               }
             ],
             "title": "Think"
+          },
+          "num_predict": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 32768.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Num Predict"
           }
         },
         "type": "object",
@@ -1174,6 +1502,16 @@
               }
             ],
             "title": "Error"
+          },
+          "diagnostics": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GenerationDiagnostics"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",

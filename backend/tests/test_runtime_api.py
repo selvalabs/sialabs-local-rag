@@ -15,3 +15,4 @@ def test_runtime_profiles_make_thinking_explicit(client: TestClient) -> None:
     assert body["profiles"]["economy"]["think"] is False
     assert body["profiles"]["balanced"]["think"] is False
     assert body["profiles"]["strong"]["think"] is True
+    assert "num_predict" in body["default_options"]

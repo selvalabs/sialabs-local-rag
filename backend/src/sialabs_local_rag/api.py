@@ -363,7 +363,14 @@ async def chat(
     except EmbeddingIndexCompatibilityError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except ProviderError as exc:
+        detail: str | dict[str, object] = str(exc)
+        diagnostics = getattr(exc, "chat_diagnostics", exc.diagnostics)
+        if diagnostics is not None:
+            detail = {
+                "message": str(exc),
+                "diagnostics": diagnostics.model_dump(exclude_none=True),
+            }
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(exc),
+            detail=detail,
         ) from exc

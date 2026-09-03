@@ -50,13 +50,41 @@ describe('API client', () => {
     await askQuestion('question', [{ role: 'user', content: 'previous' }], {
       profile: 'balanced',
       think: false,
+      num_predict: 384,
     })
 
     const request = fetchMock.mock.calls[0][1] as RequestInit
     expect(JSON.parse(String(request.body))).toMatchObject({
       question: 'question',
       conversation_context: [{ role: 'user', content: 'previous' }],
-      runtime_options: { profile: 'balanced', think: false },
+      runtime_options: { profile: 'balanced', think: false, num_predict: 384 },
+    })
+  })
+
+  it('preserves only structured safe diagnostics from a failed chat request', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          detail: {
+            message: 'Ollama chat response returned empty content.',
+            diagnostics: {
+              failure_classification: 'empty_content_unknown_cause',
+              done_reason: 'stop',
+              content_chars: 0,
+              thinking_present: false,
+            },
+          },
+        }),
+        { status: 503, headers: { 'Content-Type': 'application/json' } },
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(askQuestion('question')).rejects.toMatchObject({
+      diagnostics: {
+        failure_classification: 'empty_content_unknown_cause',
+        thinking_present: false,
+      },
     })
   })
 })
